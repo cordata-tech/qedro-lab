@@ -1,0 +1,9 @@
+name: acme
+version: "1.0.0"
+profile: acme
+model-paths: ["models"]
+packages-install-path: /warehouse/dbt/packages
+
+models:
+  acme:
+    +materialized: table

@@ -1,0 +1,7 @@
+acme:
+  target: lab
+  outputs:
+    lab:
+      type: duckdb
+      path: /warehouse/acme.duckdb
+      threads: 1

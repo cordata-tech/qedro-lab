@@ -1,0 +1,143 @@
+# qedro-lab: every place qedro reads OpenLineage from, run locally, and the emitters
+# that write to all of them at once.
+#
+#   docker compose up -d --wait          # the destinations
+#   docker compose run --rm lab day 1    # one day of ACME's pipelines
+#   docker compose run --rm lab check    # qedro against every source
+#
+# Every port is bound to 127.0.0.1: the emulators run with fixed, published
+# credentials, which are harmless only while nothing outside this machine can
+# reach them.
+
+name: qedro-lab
+
+x-versions:
+  # Pinned so a capture can name exactly what produced it. Bump deliberately and
+  # say so in the capture's README.
+  marquez: &marquez marquezproject/marquez:0.51.1
+  marquez-web: &marquez-web marquezproject/marquez-web:0.51.1
+  postgres: &postgres postgres:16.16
+  kafka: &kafka apache/kafka:4.4.0
+  # MinIO stopped publishing community images, so S3 is moto's server mode.
+  s3: &s3 motoserver/moto:5.2.5
+  gcs: &gcs fsouza/fake-gcs-server:1.56.1
+  azure: &azure mcr.microsoft.com/azure-storage/azurite:3.38.0
+
+services:
+  marquez-db:
+    image: *postgres
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "marquez"]
+      interval: 2s
+      retries: 30
+
+  marquez:
+    image: *marquez
+    # Published for amd64 only, so on an arm64 machine it runs under emulation
+    # and its first requests are slow.
+    platform: linux/amd64
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+    environment:
+      MARQUEZ_PORT: "5000"
+      MARQUEZ_ADMIN_PORT: "5001"
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      # Search indexes into OpenSearch, which the lab does not run. Left on, every
+      # write first fails to reach it, which slowed the first POST past the
+      # client's 5s timeout and its retries stored one event three times.
+      SEARCH_ENABLED: "false"
+    ports:
+      - "127.0.0.1:5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5001/healthcheck || exit 1"]
+      interval: 3s
+      retries: 60
+
+  marquez-web:
+    image: *marquez-web
+    platform: linux/amd64
+    depends_on:
+      marquez:
+        condition: service_healthy
+    environment:
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: "5000"
+      WEB_PORT: "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  kafka:
+    image: *kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_NUM_PARTITIONS: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 3s
+      retries: 40
+
+  s3:
+    image: *s3
+    ports:
+      - "127.0.0.1:9000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/moto-api/')\""]
+      interval: 2s
+      retries: 30
+
+  gcs:
+    image: *gcs
+    command: ["-scheme", "http", "-port", "4443", "-external-url", "http://gcs:4443", "-backend", "memory"]
+    ports:
+      - "127.0.0.1:4443:4443"
+
+  azure:
+    image: *azure
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--loose", "--skipApiVersionCheck"]
+    ports:
+      - "127.0.0.1:10000:10000"
+
+  # The emitters, qedro and the check, in one image. Run on demand rather than kept up.
+  lab:
+    build: ./lab
+    profiles: ["run"]
+    depends_on:
+      marquez:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      gcs:
+        condition: service_started
+      azure:
+        condition: service_started
+    env_file: lab/emulators.env
+    volumes:
+      - ./lab:/lab:ro
+      - ./events:/events
+      - warehouse:/warehouse
+
+volumes:
+  marquez-db:
+  warehouse:

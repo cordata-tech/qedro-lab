@@ -1,0 +1,52 @@
+# One OpenLineage configuration for every Python emitter in the lab: dbt-ol,
+# art30-emit and Airflow's provider. The composite transport sends each event
+# to every destination, which is the arrangement docs/pilot.md in qedro
+# recommends for keeping a copy beside an existing backend.
+#
+# continue_on_success sends to all of them rather than stopping at the first
+# that accepts; continue_on_failure is off, so a destination that refuses an
+# event fails the run instead of leaving one source quietly short.
+transport:
+  type: composite
+  continue_on_success: true
+  continue_on_failure: false
+  transports:
+    marquez:
+      type: http
+      url: http://marquez:5000
+      # The client gives up after 5s by default and retries, and Marquez stores
+      # each retry as another copy of the event. Under emulation on arm64 its
+      # POSTs took up to 9s, so one day stored three duplicates.
+      timeout: 30
+    kafka:
+      type: kafka
+      topic: openlineage.events
+      config:
+        bootstrap.servers: kafka:9092
+      flush: true
+    directory:
+      type: file
+      log_file_path: /events/directory/ol
+      append: false
+    s3:
+      type: file
+      log_file_path: s3://openlineage/events/ol
+      append: false
+      storage_options:
+        endpoint_url: http://s3:5000
+        key: lab
+        secret: lab
+    gcs:
+      type: file
+      log_file_path: gs://openlineage/events/ol
+      append: false
+      storage_options:
+        endpoint_url: http://gcs:4443
+        token: anon
+        project: qedro-lab
+    azure:
+      type: file
+      log_file_path: abfs://openlineage/events/ol
+      append: false
+      storage_options:
+        connection_string: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azure:10000/devstoreaccount1;

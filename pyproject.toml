@@ -1,0 +1,12 @@
+# Tool configuration only; the lab is run through Docker Compose, not installed.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["lab"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.codespell]
+skip = "./.jj,./.git,./events"

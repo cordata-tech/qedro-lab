@@ -1,0 +1,11 @@
+# Everything the lab image runs, pinned so a capture names what produced it.
+openlineage-python[kafka,fsspec]==1.55.0
+openlineage-dbt==1.55.0
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+art30-emit==0.1.0
+qedro[s3,gcs,azure]==0.25.0
+s3fs==2026.9.0
+gcsfs==2026.10.1
+adlfs==2026.8.0
+confluent-kafka==2.16.2

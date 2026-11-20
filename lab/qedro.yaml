@@ -1,0 +1,32 @@
+# ACME Finanz GmbH's configuration for the lab, written the way an organisation
+# writes one on the first afternoon, as in qedro's demo.
+#
+# dbt-ol puts every model in the `acme` namespace, so each rule names the domain
+# a model belongs to; the newsletter export runs under art30-emit and emits its own
+# purpose and legal basis, so nothing here covers it.
+
+controller:
+  name: ACME Finanz GmbH
+  contact: datenschutz@acme-finanz.example
+  dpo: Erika Mustermann, Datenschutzbeauftragte
+  representative: ACME Finanz GmbH, Musterstraße 1, 00000 Musterstadt
+
+domains:
+  - crm
+  - billing
+  - fraud
+
+jobs:
+  "acme/acme.main.acme.crm_*":
+    purpose: customer-administration
+    legal_basis: contract
+    domain: crm
+
+  "acme/acme.main.acme.billing_*":
+    purpose: invoicing
+    legal_basis: contract
+    domain: billing
+
+  # The run that wraps the models. It reads and writes nothing itself.
+  "acme/dbt-run-acme":
+    domain: crm

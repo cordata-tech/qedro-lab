@@ -1,7 +1,15 @@
+# The warehouse: Postgres, standing in for Redshift, where dbt transforms what
+# Airflow loaded. dbt-ol names every dataset after this connection, as
+# postgres://warehouse:5432 and acme.<schema>.<table>.
 acme:
-  target: lab
+  target: warehouse
   outputs:
-    lab:
-      type: duckdb
-      path: /warehouse/acme.duckdb
+    warehouse:
+      type: postgres
+      host: warehouse
+      port: 5432
+      user: acme
+      password: acme
+      dbname: acme
+      schema: marts
       threads: 1

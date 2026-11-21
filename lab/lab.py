@@ -1,7 +1,7 @@
-"""Drive the lab: run a day of ACME's pipelines, then check qedro reads every source.
+"""Create the buckets, and check qedro reads the same events from every source.
 
-    docker compose run --rm lab day 1     # data for day 1, dbt-ol, the art30-emit job
-    docker compose run --rm lab check     # every source read, and compared
+    docker compose run --rm airflow day 1   # a day of ACME's DAG, run by Airflow
+    docker compose run --rm lab check       # every source read, and compared
 
 Each emitter sends every event to every destination through the composite transport
 in openlineage.yml. `check` then reads them back the way a pilot would — with qedro's
@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import sys
 import uuid
 from collections import Counter
@@ -22,9 +21,6 @@ from pathlib import Path
 
 import fsspec
 
-import generate
-
-WAREHOUSE = Path("/warehouse")
 EVENTS = Path("/events/directory")
 BUCKET = "openlineage"
 
@@ -59,53 +55,6 @@ def setup() -> None:
         if not fs.exists(BUCKET):
             fs.mkdir(BUCKET)
             print(f"  created {name} bucket {BUCKET}")
-
-
-def _run(command: list[str], **env: str) -> None:
-    print(f"  $ {' '.join(command)}", flush=True)
-    subprocess.run(command, check=True, env=os.environ | env)
-
-
-def _dataset(suffix: str) -> str:
-    """The `namespace/name` dbt-ol gave the table ending in *suffix*, read from the
-    events rather than assumed, so the export names the table dbt wrote."""
-    for path in sorted(EVENTS.iterdir()):
-        event = json.loads(path.read_text())
-        for dataset in event.get("outputs", []):
-            if dataset["name"].endswith(suffix):
-                return f"{dataset['namespace']}/{dataset['name']}"
-    raise SystemExit(f"no dbt output ending in {suffix} among the events")
-
-
-def day(number: int) -> None:
-    setup()
-    generate.write(number, WAREHOUSE / "raw")
-    print(f"  wrote day {number}'s raw data to {WAREHOUSE / 'raw'}")
-    _run(
-        ["dbt-ol", "run", "--project-dir", "/lab/dbt", "--profiles-dir", "/lab/dbt"],
-        OPENLINEAGE_NAMESPACE="acme",
-        DBT_SEND_ANONYMOUS_USAGE_STATS="false",
-        # dbt 1.12 deprecates these in dbt_project.yml; /lab is mounted read-only.
-        DBT_TARGET_PATH="/warehouse/dbt/target",
-        DBT_LOG_PATH="/warehouse/dbt/logs",
-    )
-    consent, customers = _dataset("crm_consent_state"), _dataset("crm_customers")
-    export = "file:///warehouse/exports/newsletter_optins.csv"
-    _run(
-        [
-            "art30-emit",
-            "--job", "acme.crm/newsletter-export",
-            "--purpose", "direct-marketing",
-            "--legal-basis", "consent",
-            "--reads", consent,
-            "--reads", customers,
-            "--writes", export,
-            "--tag", f"{customers}:data_category=contact",
-            "--",
-            "python", "/lab/jobs/newsletter_export.py",
-            str(WAREHOUSE / "acme.duckdb"), "/warehouse/exports/newsletter_optins.csv",
-        ]
-    )  # fmt: skip
 
 
 def _key(event: dict) -> tuple[str, str, str]:
@@ -188,14 +137,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="lab")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("setup", help="create the buckets")
-    day_cmd = sub.add_parser("day", help="run one day of ACME's pipelines")
-    day_cmd.add_argument("number", type=int)
     sub.add_parser("check", help="read every source and compare")
     args = parser.parse_args()
     if args.command == "setup":
         setup()
-    elif args.command == "day":
-        day(args.number)
     else:
         return check()
     return 0

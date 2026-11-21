@@ -1,0 +1,10 @@
+# Airflow's own environment: the provider, and what its transports need to reach
+# every destination in openlineage.yml.
+apache-airflow-providers-openlineage==2.21.0
+apache-airflow-providers-postgres==7.1.2
+apache-airflow-providers-common-sql==3.0.0
+openlineage-python[kafka,fsspec]==1.55.0
+s3fs==2026.9.0
+gcsfs==2026.10.1
+adlfs==2026.8.0
+confluent-kafka==2.16.2

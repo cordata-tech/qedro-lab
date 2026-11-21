@@ -12,8 +12,8 @@ and its fixtures can be captured again. It holds fictitious data only.
 - **The check has to pass** on a clean stack before and after the change:
 
   ```bash
-  docker compose down -v && docker compose up -d --wait
-  docker compose run --rm lab day 1 && docker compose run --rm lab day 2
+  docker compose --profile run down -v && docker compose up -d --wait
+  docker compose run --rm airflow day 1 && docker compose run --rm airflow day 2
   docker compose run --rm lab check
   ```
 

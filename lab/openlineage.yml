@@ -6,24 +6,18 @@
 # continue_on_success sends to all of them rather than stopping at the first
 # that accepts; continue_on_failure is off, so a destination that refuses an
 # event fails the run instead of leaving one source quietly short.
+#
+# The order matters, and the copies come first. Without sort_transports the
+# composite sends in the order listed, and Airflow's provider stops an emission
+# after [openlineage] execution_timeout, 10s by default. With Marquez first, one
+# POST took 17s and the process was stopped after Marquez had stored the event
+# and before any copy was written: the directory lost a START that Marquez kept.
+# A slow backend listed last can only delay itself.
 transport:
   type: composite
   continue_on_success: true
   continue_on_failure: false
   transports:
-    marquez:
-      type: http
-      url: http://marquez:5000
-      # The client gives up after 5s by default and retries, and Marquez stores
-      # each retry as another copy of the event. Under emulation on arm64 its
-      # POSTs took up to 9s, so one day stored three duplicates.
-      timeout: 30
-    kafka:
-      type: kafka
-      topic: openlineage.events
-      config:
-        bootstrap.servers: kafka:9092
-      flush: true
     directory:
       type: file
       log_file_path: /events/directory/ol
@@ -50,3 +44,16 @@ transport:
       append: false
       storage_options:
         connection_string: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azure:10000/devstoreaccount1;
+    kafka:
+      type: kafka
+      topic: openlineage.events
+      config:
+        bootstrap.servers: kafka:9092
+      flush: true
+    marquez:
+      type: http
+      url: http://marquez:5000
+      # The client gives up after 5s by default and retries, and Marquez stores
+      # each retry as another copy of the event. Under emulation on arm64 one POST
+      # took 36s, so at 5s one day stored three duplicates and at 30s one more.
+      timeout: 120

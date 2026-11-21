@@ -1,10 +1,9 @@
 version: 2
 
-# The raw files generate.py writes, read where they lie.
+# What Airflow's load_raw task loaded into the warehouse.
 sources:
   - name: raw
-    meta:
-      external_location: "read_csv_auto('/warehouse/raw/{name}.csv', header = true)"
+    schema: raw
     tables:
       - name: customers
       - name: consent_events

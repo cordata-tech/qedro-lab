@@ -1,9 +1,10 @@
 # ACME Finanz GmbH's configuration for the lab, written the way an organisation
 # writes one on the first afternoon, as in qedro's demo.
 #
-# dbt-ol puts every model in the `acme` namespace, so each rule names the domain
-# a model belongs to; the newsletter export runs under art30-emit and emits its own
-# purpose and legal basis, so nothing here covers it.
+# Airflow and dbt-ol put every job in the `acme` namespace, so each rule names the
+# domain a job belongs to. The newsletter export's art30-emit job emits its own
+# purpose and legal basis, so no rule covers `acme.crm/newsletter-export`; the
+# Airflow task wrapping it is mapped like any other.
 
 controller:
   name: ACME Finanz GmbH
@@ -17,16 +18,30 @@ domains:
   - fraud
 
 jobs:
-  "acme/acme.main.acme.crm_*":
+  "acme/acme.marts.acme.crm_*":
     purpose: customer-administration
     legal_basis: contract
     domain: crm
 
-  "acme/acme.main.acme.billing_*":
+  "acme/acme.marts.acme.billing_*":
     purpose: invoicing
     legal_basis: contract
     domain: billing
 
   # The run that wraps the models. It reads and writes nothing itself.
   "acme/dbt-run-acme":
+    domain: crm
+
+  # The DAG's tasks.
+  "acme/acme_daily.load_raw":
+    purpose: customer-administration
+    legal_basis: contract
+    domain: crm
+
+  "acme/acme_daily.daily_revenue":
+    purpose: invoicing
+    legal_basis: contract
+    domain: billing
+
+  "acme/acme_daily.*":
     domain: crm

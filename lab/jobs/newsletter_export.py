@@ -11,19 +11,16 @@ import csv
 import sys
 from pathlib import Path
 
-import duckdb
+import psycopg
 
 
-def main(database: str, out: str) -> None:
-    rows = (
-        duckdb.connect(database, read_only=True)
-        .execute(
-            "select c.customer_id, c.email from crm_consent_state s "
-            "join crm_customers c using (customer_id) "
+def main(dsn: str, out: str) -> None:
+    with psycopg.connect(dsn) as conn:
+        rows = conn.execute(
+            "select c.customer_id, c.email from marts.crm_consent_state s "
+            "join marts.crm_customers c using (customer_id) "
             "where s.channel = 'email' and s.granted order by c.customer_id"
-        )
-        .fetchall()
-    )
+        ).fetchall()
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)

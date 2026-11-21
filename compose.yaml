@@ -1,9 +1,9 @@
 # qedro-lab: every place qedro reads OpenLineage from, run locally, and the emitters
 # that write to all of them at once.
 #
-#   docker compose up -d --wait          # the destinations
-#   docker compose run --rm lab day 1    # one day of ACME's pipelines
-#   docker compose run --rm lab check    # qedro against every source
+#   docker compose up -d --wait              # the destinations and the warehouse
+#   docker compose run --rm airflow day 1    # one day of ACME's DAG
+#   docker compose run --rm lab check        # qedro against every source
 #
 # Every port is bound to 127.0.0.1: the emulators run with fixed, published
 # credentials, which are harmless only while nothing outside this machine can
@@ -22,6 +22,9 @@ x-versions:
   s3: &s3 motoserver/moto:5.2.5
   gcs: &gcs fsouza/fake-gcs-server:1.56.1
   azure: &azure mcr.microsoft.com/azure-storage/azurite:3.38.0
+  # The warehouse ACME transforms in: Postgres, the nearest free stand-in for
+  # Redshift, which began as a fork of it.
+  warehouse: &warehouse postgres:16.16
 
 services:
   marquez-db:
@@ -63,6 +66,9 @@ services:
       test: ["CMD-SHELL", "curl -fs http://localhost:5001/healthcheck || exit 1"]
       interval: 3s
       retries: 60
+      # A first start runs its database migrations under emulation on arm64,
+      # which outran the retries above and failed `up --wait` on a fresh volume.
+      start_period: 300s
 
   marquez-web:
     image: *marquez-web
@@ -117,7 +123,62 @@ services:
     ports:
       - "127.0.0.1:10000:10000"
 
-  # The emitters, qedro and the check, in one image. Run on demand rather than kept up.
+  warehouse:
+    image: *warehouse
+    environment:
+      POSTGRES_USER: acme
+      POSTGRES_PASSWORD: acme
+      POSTGRES_DB: acme
+    volumes:
+      - warehouse-db:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "acme"]
+      interval: 2s
+      retries: 30
+
+  # ACME's DAG, run one day at a time with `airflow dags test`.
+  airflow:
+    build: ./airflow
+    profiles: ["run"]
+    entrypoint: ["/opt/airflow/day.sh"]
+    depends_on:
+      s3:
+        condition: service_healthy
+      gcs:
+        condition: service_started
+      azure:
+        condition: service_started
+      warehouse:
+        condition: service_healthy
+      marquez:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file: lab/emulators.env
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      # 30s by default. A fresh container discovers its providers on the first
+      # import, and while Marquez ran its migrations under emulation that took
+      # longer, so day 1 failed before any task ran.
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: "180"
+      AIRFLOW__OPENLINEAGE__CONFIG_PATH: /lab/openlineage.yml
+      AIRFLOW__OPENLINEAGE__NAMESPACE: acme
+      # 10s by default. Marquez under emulation took up to 36s to accept one event,
+      # and an emission stopped part-way leaves the destinations disagreeing; this
+      # outlasts the HTTP transport's own 120s in openlineage.yml.
+      AIRFLOW__OPENLINEAGE__EXECUTION_TIMEOUT: "180"
+      AIRFLOW_CONN_WAREHOUSE: postgres://acme:acme@warehouse:5432/acme
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - ./airflow/day.sh:/opt/airflow/day.sh:ro
+      - ./lab:/lab:ro
+      - ./events:/events
+      - warehouse:/warehouse
+
+  # qedro and the check. Run on demand rather than kept up.
   lab:
     build: ./lab
     profiles: ["run"]
@@ -140,4 +201,5 @@ services:
 
 volumes:
   marquez-db:
+  warehouse-db:
   warehouse:

@@ -2,6 +2,8 @@
 
     docker compose run --rm airflow day 1   # a day of ACME's DAG, run by Airflow
     docker compose run --rm lab check       # every source read, and compared
+    docker compose run --rm lab summary     # the record's stable part, for CI
+    docker compose run --rm lab capture airflow-3.4 --days 2   # a fixture for qedro
 
 Each emitter sends every event to every destination through the composite transport
 in openlineage.yml. `check` then reads them back the way a pilot would — with qedro's
@@ -14,14 +16,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 import uuid
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 import fsspec
 
 EVENTS = Path("/events/directory")
+REPO = Path("/repo")
 BUCKET = "openlineage"
 
 #: Each source as a pilot would pass it to qedro, beside the name the check prints.
@@ -133,14 +139,105 @@ def check() -> int:
     return 1 if failed else 0
 
 
+#: What a record says that a second run of the same days must say again. Run ids,
+#: event times and timestamps change every run, so they stay out.
+STABLE = ("job", "domain", "reads", "writes", "classification", "unclassified", "gaps")
+
+
+def _value(field: object) -> object:
+    if isinstance(field, dict):
+        return {k: field.get(k) for k in ("value", "provenance") if k in field}
+    return field
+
+
+def summary() -> dict:
+    """The record qedro builds from the directory, reduced to what is stable.
+
+    Compared in CI against `expected/summary.json`, so an emitter or qedro release
+    that changes what the record says shows up as a diff to review.
+    """
+    out = subprocess.run(
+        ["qedro", "ropa", str(EVENTS), "--config", "/lab/qedro.yaml", "--format", "json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    record = json.loads(out)
+    activities = [
+        {
+            **{k: a.get(k) for k in STABLE},
+            "purpose": _value(a.get("purpose")),
+            "legal_basis": _value(a.get("legal_basis")),
+        }
+        for a in record["activities"]
+    ]
+    return {
+        "complete": record["complete"],
+        "earned": record["earned"],
+        "reasons": record["reasons"],
+        "activities": sorted(activities, key=lambda a: a["job"]),
+    }
+
+
+def _versions() -> list[str]:
+    """Every pinned image and package, read from the files that pin them."""
+    pins: list[str] = []
+    for line in (REPO / "compose.yaml").read_text().splitlines():
+        match = re.match(r"\s+[\w-]+: &[\w-]+ (\S+)$", line)
+        if match:
+            pins.append(match.group(1))
+    for name in ("airflow/Dockerfile", "airflow/requirements-airflow.txt",
+                 "airflow/requirements-tools.txt", "lab/requirements.txt"):  # fmt: skip
+        for line in (REPO / name).read_text().splitlines():
+            line = line.strip()
+            if line.startswith("RUN "):
+                continue
+            if line.startswith("FROM "):
+                pins.append(line.removeprefix("FROM "))
+            elif "==" in line and not line.startswith("#"):
+                pins.append(line)
+    return sorted(set(pins))
+
+
+def capture(name: str, days: int) -> None:
+    """Write the directory's events, ordered by time, with a README naming every
+    version that produced them, in the shape qedro's `tests/fixtures/` uses."""
+    events = [json.loads(p.read_text()) for p in sorted(EVENTS.iterdir())]
+    events.sort(key=lambda e: (e["eventTime"], e["run"]["runId"], e["eventType"]))
+    target = Path("/captures") / name
+    target.mkdir(parents=True, exist_ok=False)
+    (target / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+    jobs = sorted({f"{e['job']['namespace']}/{e['job']['name']}" for e in events})
+    pins = "\n".join(f"- `{p}`" for p in _versions())
+    job_lines = "\n".join(f"- `{j}`" for j in jobs)
+    (target / "README.md").write_text(
+        f"Real OpenLineage from qedro-lab, not hand-written.\n\n"
+        f"`events.jsonl` is {len(events)} events from {days} days of ACME's DAG, captured "
+        f"on {date.today().isoformat()} with `lab capture {name} --days {days}` after "
+        f"`scheduled.sh 1` to `scheduled.sh {days}` under Airflow's scheduler on a "
+        f"fresh stack, between "
+        f"{events[0]['eventTime']} and {events[-1]['eventTime']}. Every name in it is "
+        f"fictitious.\n\n## Versions\n\n{pins}\n\n## Jobs\n\n{job_lines}\n"
+    )
+    print(f"  wrote {len(events)} events and a README to {target}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="lab")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("setup", help="create the buckets")
     sub.add_parser("check", help="read every source and compare")
+    sub.add_parser("summary", help="the stable part of the record, as JSON")
+    capture_cmd = sub.add_parser("capture", help="write the events as a fixture")
+    capture_cmd.add_argument("name")
+    capture_cmd.add_argument("--days", type=int, required=True)
     args = parser.parse_args()
     if args.command == "setup":
         setup()
+    elif args.command == "summary":
+        print(json.dumps(summary(), indent=2, sort_keys=True))
+    elif args.command == "capture":
+        capture(args.name, args.days)
     else:
         return check()
     return 0

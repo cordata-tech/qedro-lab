@@ -1,0 +1,242 @@
+{
+  "activities": [
+    {
+      "classification": [
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "data_category",
+          "provenance": "facet",
+          "reads": [
+            "postgres://warehouse:5432/acme.marts.crm_customers"
+          ],
+          "unrecognised": false,
+          "value": "contact",
+          "writes": []
+        }
+      ],
+      "domain": "crm",
+      "gaps": [],
+      "job": "acme.crm/newsletter-export",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "consent"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "direct-marketing"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.marts.crm_consent_state",
+        "postgres://warehouse:5432/acme.marts.crm_customers"
+      ],
+      "unclassified": [
+        "file:///warehouse/exports/newsletter_optins.csv",
+        "postgres://warehouse:5432/acme.marts.crm_consent_state"
+      ],
+      "writes": [
+        "file:///warehouse/exports/newsletter_optins.csv"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "c",
+          "declared_by": [
+            "acme.crm/newsletter-export"
+          ],
+          "key": "data_category",
+          "provenance": "facet",
+          "reads": [
+            "postgres://warehouse:5432/acme.marts.crm_customers"
+          ],
+          "unrecognised": false,
+          "value": "contact",
+          "writes": []
+        }
+      ],
+      "domain": "billing",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme.marts.acme.billing_invoices",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "invoicing"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.marts.crm_customers",
+        "postgres://warehouse:5432/acme.raw.orders"
+      ],
+      "unclassified": [
+        "postgres://warehouse:5432/acme.marts.billing_invoices",
+        "postgres://warehouse:5432/acme.raw.orders"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.marts.billing_invoices"
+      ]
+    },
+    {
+      "classification": [],
+      "domain": "crm",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme.marts.acme.crm_consent_state",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "customer-administration"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.raw.consent_events"
+      ],
+      "unclassified": [
+        "postgres://warehouse:5432/acme.marts.crm_consent_state",
+        "postgres://warehouse:5432/acme.raw.consent_events"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.marts.crm_consent_state"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "c",
+          "declared_by": [
+            "acme.crm/newsletter-export"
+          ],
+          "key": "data_category",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "contact",
+          "writes": [
+            "postgres://warehouse:5432/acme.marts.crm_customers"
+          ]
+        }
+      ],
+      "domain": "crm",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme.marts.acme.crm_customers",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "customer-administration"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.raw.customers"
+      ],
+      "unclassified": [
+        "postgres://warehouse:5432/acme.raw.customers"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.marts.crm_customers"
+      ]
+    },
+    {
+      "classification": [],
+      "domain": "billing",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme_daily.daily_revenue",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "invoicing"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.marts.billing_invoices"
+      ],
+      "unclassified": [
+        "postgres://warehouse:5432/acme.finance.daily_revenue",
+        "postgres://warehouse:5432/acme.marts.billing_invoices"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.finance.daily_revenue"
+      ]
+    },
+    {
+      "classification": [],
+      "domain": "crm",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme_daily.load_raw",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "customer-administration"
+      },
+      "reads": [
+        "file:///warehouse/raw/consent_events.csv",
+        "file:///warehouse/raw/customers.csv",
+        "file:///warehouse/raw/orders.csv"
+      ],
+      "unclassified": [
+        "file:///warehouse/raw/consent_events.csv",
+        "file:///warehouse/raw/customers.csv",
+        "file:///warehouse/raw/orders.csv",
+        "postgres://warehouse:5432/acme.raw.consent_events",
+        "postgres://warehouse:5432/acme.raw.customers",
+        "postgres://warehouse:5432/acme.raw.orders"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.raw.consent_events",
+        "postgres://warehouse:5432/acme.raw.customers",
+        "postgres://warehouse:5432/acme.raw.orders"
+      ]
+    },
+    {
+      "classification": [],
+      "domain": "crm",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/acme_daily.newsletter_export",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    }
+  ],
+  "complete": false,
+  "earned": "every activity stands on emitted evidence",
+  "reasons": [
+    "5 of 7 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven",
+    "1 of 7 activities has no purpose or no legal basis from any source",
+    "declared in scope but produced no lineage in the window: fraud \u2014 the domain in view named crm was guessed from the job namespace, and a wrong guess reads the same as silence; `domain:` on a mapping rule overrides the guess"
+  ]
+}

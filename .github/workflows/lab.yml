@@ -1,0 +1,63 @@
+name: Lab
+
+# Brings the whole lab up on a runner, runs ACME's DAG for a simulated fortnight,
+# and fails if the sources disagree or if the record qedro builds from them says
+# something other than expected/summary.json. A new emitter, provider or qedro
+# release that changes the record shows up here as a diff to review.
+#
+# The DAG runs under Airflow's scheduler, as production runs it: `airflow dags test`
+# runs every task in one process, which filed one task's hook lineage under the
+# next and never emitted the DAG run's START. Marquez is published for amd64 only,
+# so on a GitHub runner it runs natively.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many days of the DAG to run"
+        default: "14"
+  schedule:
+    - cron: "23 4 * * 1"     # weekly: an image or package can move without a commit here
+
+permissions:
+  contents: read
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Build and start the destinations
+        run: |
+          docker compose --profile run --profile scheduler build
+          docker compose --profile scheduler up -d --wait
+
+      - name: Run the days
+        env:
+          DAYS: ${{ inputs.days || '14' }}
+        run: |
+          for day in $(seq "$DAYS"); do
+            docker compose exec -T airflow-scheduler /opt/airflow/scheduled.sh "$day"
+          done
+
+      - name: Every source holds the same events
+        run: docker compose run --rm lab check
+
+      - name: The record says what it said before
+        run: |
+          docker compose run --rm lab summary > summary.json
+          diff -u expected/summary.json summary.json
+
+      - name: Keep the events and the summary
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: lab-events
+          path: |
+            events/directory/
+            summary.json
+          retention-days: 14

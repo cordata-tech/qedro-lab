@@ -34,16 +34,31 @@ community images; moto's server mode stands in for S3.
 
 ## Running it
 
+Under Airflow's scheduler, as production runs it, which is the mode CI uses:
+
 ```bash
-docker compose up -d --wait                  # the destinations and the warehouse
-docker compose run --rm airflow day 1        # day 1 of ACME's DAG
-docker compose run --rm airflow day 2        # day 2: the same DAG over more rows
-docker compose run --rm lab check            # every source read back and compared
-docker compose --profile run down -v         # everything, including stored events
+docker compose --profile scheduler up -d --wait          # destinations, warehouse, Airflow
+docker compose exec airflow-scheduler /opt/airflow/scheduled.sh 1   # trigger day 1, wait
+docker compose exec airflow-scheduler /opt/airflow/scheduled.sh 2   # day 2: more rows
+docker compose run --rm lab check                        # every source read back and compared
+docker compose run --rm lab summary                      # what the record says, minus run ids
+docker compose run --rm lab capture <name> --days 2      # the events as a fixture for qedro
+docker compose --profile run --profile scheduler down -v # everything, including stored events
 ```
 
-The last line needs `--profile run`: without it Compose leaves the volumes of the
-services under that profile in place, and the next day reads the last run's files.
+Airflow's UI is then at <http://127.0.0.1:8080>, with the password `airflow standalone`
+prints in its log. A quicker mode runs each day in one process with `airflow dags
+test`, which is how the lab started and is kept for fast iteration:
+
+```bash
+docker compose up -d --wait
+docker compose run --rm airflow day 1
+```
+
+It differs from a scheduled run in two ways that matter to qedro, listed under the
+findings below, so captures and CI use the scheduler. The reset needs both profiles:
+without them Compose leaves those services' volumes in place, and the next day reads
+the last run's files.
 
 A day is one run of the DAG in `airflow/dags/acme_daily.py`, with `airflow dags test`
 at the logical date for that day, `day 1` being 2026-11-02:
@@ -108,7 +123,7 @@ Each finding is fixed in the configuration, with its cause written beside the fi
   for adlfs. An emulator is not the cloud, so this tests qedro's reading code and
   fsspec, not a real bucket's permissions.
 
-Running Airflow found seven more, none of them qedro's:
+Running Airflow found ten more, none of them qedro's:
 
 - **A slow first destination costs the copies events.** The composite transport sends
   in the order listed, and Airflow's provider stops an emission after
@@ -117,15 +132,32 @@ Running Airflow found seven more, none of them qedro's:
   written, and the directory never saw it. The copies are now listed first and the
   limit is 180 seconds. qedro's pilot guide lists the backend first, so it needs the
   same advice.
-- **Hook-level lineage lands under the wrong task.** The provider emits each SQL
-  statement a hook ran as a child job, `acme_daily.newsletter_export.hll_query.1`
-  to `.4`, but these are `daily_revenue`'s four statements, filed under the next task,
-  and day 2's appear twice. Under `airflow dags test` every task runs in one process,
-  so the provider's collector of hook lineage seemingly is not cleared between tasks;
-  whether a scheduled run does the same is part of
-  [#2](https://github.com/cordata-tech/qedro-lab/issues/2). `daily_revenue`'s own
-  events are right: the provider parsed its SQL into `marts.billing_invoices` →
-  `finance.daily_revenue`.
+- **`airflow dags test` is not a scheduled run, in two ways qedro sees.** It emits the
+  DAG run's `COMPLETE` but never its `START`. And it files hook-level lineage under
+  the wrong task: each SQL statement a hook ran becomes a child job,
+  `acme_daily.newsletter_export.hll_query.1` to `.4`, which are `daily_revenue`'s four
+  statements filed under the task that ran next, with day 2's twice over. qedro then
+  listed four activities with no datasets and no purpose, and left out
+  `newsletter_export`, which those children made a parent. Under the scheduler, with
+  each task in a process of its own, neither happens: the DAG run emits both events,
+  no `hll_query` job appears, and `daily_revenue`'s own events carry its lineage,
+  `marts.billing_invoices` → `finance.daily_revenue`. So this is the one-process test
+  command rather than a provider bug, and captures come from the scheduler.
+- **A task that succeeded has 20 seconds for its listeners.** Under the scheduler,
+  Airflow keeps a successful task's process for `[core] task_success_overtime`, 20
+  seconds by default, and then ends it. `daily_revenue`'s `COMPLETE` to six
+  destinations took longer: the directory and two buckets received it, Azure, Kafka
+  and Marquez did not, and the task's log stops at the start of the emission. The lab
+  allows 180 seconds.
+- **The standalone API server answers heartbeats slowly under load.** With every
+  Airflow component in one container beside Marquez under Rosetta, heartbeat requests
+  took 20 to 32 seconds, the server ended one task as no longer running, and the retry
+  succeeded. The run's lineage then carries a `FAIL` and a second attempt, which is a
+  real shape but a lab artefact here; a deployment with its own API server should not
+  see it.
+- **A DAG with a schedule runs on its own once unpaused.** With `schedule="@daily"`, the
+  scheduler started a run for today beside the day the lab triggered, loading day 20's
+  data. The DAG has no schedule; every day is triggered for its logical date.
 - **`up --wait` fails on a one-shot service** that exited with 0, so the buckets are
   created at the start of each day instead.
 - **A fresh Airflow container can outrun its own DAG import limit.** The first import

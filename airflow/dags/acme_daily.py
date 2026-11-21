@@ -67,7 +67,10 @@ def load_raw(logical_date: datetime, **_: object) -> None:
 with DAG(
     dag_id="acme_daily",
     start_date=datetime(2026, 11, 2),
-    schedule="@daily",
+    # Every day is triggered for a chosen logical date. With "@daily", the
+    # scheduler started a run of its own for today, loading day 20's data beside
+    # the day the lab asked for.
+    schedule=None,
     catchup=False,
     tags=["acme"],
 ):

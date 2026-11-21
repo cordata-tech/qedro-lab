@@ -12,8 +12,10 @@ and its fixtures can be captured again. It holds fictitious data only.
 - **The check has to pass** on a clean stack before and after the change:
 
   ```bash
-  docker compose --profile run down -v && docker compose up -d --wait
-  docker compose run --rm airflow day 1 && docker compose run --rm airflow day 2
+  docker compose --profile run --profile scheduler down -v
+  docker compose --profile scheduler up -d --wait
+  docker compose exec airflow-scheduler /opt/airflow/scheduled.sh 1
+  docker compose exec airflow-scheduler /opt/airflow/scheduled.sh 2
   docker compose run --rm lab check
   ```
 

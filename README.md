@@ -23,6 +23,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | Apache Airflow with its OpenLineage provider | 3.4.0, provider 2.21.0 | ACME's daily DAG |
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.1.0 | a task that emits its own purpose and legal basis |
+| pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
 | qedro | 0.25.0 | the reader under test |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
@@ -123,7 +124,7 @@ Each finding is fixed in the configuration, with its cause written beside the fi
   for adlfs. An emulator is not the cloud, so this tests qedro's reading code and
   fsspec, not a real bucket's permissions.
 
-Running Airflow found ten more, none of them qedro's:
+Running Airflow found twelve more, none of them qedro's:
 
 - **A slow first destination costs the copies events.** The composite transport sends
   in the order listed, and Airflow's provider stops an emission after
@@ -155,6 +156,16 @@ Running Airflow found ten more, none of them qedro's:
   succeeded. The run's lineage then carries a `FAIL` and a second attempt, which is a
   real shape but a lab artefact here; a deployment with its own API server should not
   see it.
+- **An emitter needs the packages its transports need.** pipeline-runtime 0.2.12
+  honours `OPENLINEAGE_CONFIG` (pipeline-runtime#17), but its `run` extra installs
+  `openlineage-python` without `fsspec` or `kafka`, so a composite with bucket
+  children failed with *fsspec is not available*. Its venv here installs them
+  beside it, and its README now says so (pipeline-runtime#18).
+- **On Linux, Airflow cannot write a bind mount it does not own.** The image runs as
+  uid 50000 and the runner's checkout belongs to the runner, so the first CI run
+  failed with `Permission denied: '/events/directory'`; on macOS the file sharing
+  hides ownership. Airflow runs as `${AIRFLOW_UID:-50000}:0`, as Airflow's own
+  Compose file does, and CI writes its uid to `.env` first.
 - **A DAG with a schedule runs on its own once unpaused.** With `schedule="@daily"`, the
   scheduler started a run for today beside the day the lab triggered, loading day 20's
   data. The DAG has no schedule; every day is triggered for its logical date.
@@ -184,8 +195,6 @@ Running Airflow found ten more, none of them qedro's:
   fixtures, CI over a simulated fortnight, and Airflow under its scheduler.
 - [#3](https://github.com/cordata-tech/qedro-lab/issues/3) a scheduled erasure that
   leaves one descendant behind on purpose.
-- [#4](https://github.com/cordata-tech/qedro-lab/issues/4) pipeline-runtime as an
-  emitter, once it honours `OPENLINEAGE_CONFIG`.
 - A Kafka reader in qedro itself (cordata-tech/qedro#59), tested against this topic.
 
 ## Licence

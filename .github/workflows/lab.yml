@@ -32,7 +32,10 @@ jobs:
           persist-credentials: false
 
       - name: Build and start the destinations
+        # Airflow runs as this runner's uid, so it can write the bind-mounted events/.
         run: |
+          echo "AIRFLOW_UID=$(id -u)" > .env
+          mkdir -p events/directory
           docker compose --profile run --profile scheduler build
           docker compose --profile scheduler up -d --wait
 

@@ -1,0 +1,12 @@
+# pipeline-runtime, in a virtualenv of its own: its run extra brings DuckDB,
+# pandas, PyArrow and Great Expectations, whose pins are no business of dbt's.
+# 0.2.12 is the first release that honours OPENLINEAGE_CONFIG (pipeline-runtime#17).
+cordata-pipeline-runtime[run]==0.2.12
+# What the transports in openlineage.yml need, as the other two environments have:
+# without them the composite's bucket children fail with "fsspec is not
+# available" and the task fails with them.
+openlineage-python[kafka,fsspec]==1.55.0
+s3fs==2026.9.0
+gcsfs==2026.10.1
+adlfs==2026.8.0
+confluent-kafka==2.16.2

@@ -187,7 +187,8 @@ def _versions() -> list[str]:
         if match:
             pins.append(match.group(1))
     for name in ("airflow/Dockerfile", "airflow/requirements-airflow.txt",
-                 "airflow/requirements-tools.txt", "lab/requirements.txt"):  # fmt: skip
+                 "airflow/requirements-tools.txt", "airflow/requirements-pipeline-runtime.txt",
+                 "lab/requirements.txt"):  # fmt: skip
         for line in (REPO / name).read_text().splitlines():
             line = line.strip()
             if line.startswith("RUN "):

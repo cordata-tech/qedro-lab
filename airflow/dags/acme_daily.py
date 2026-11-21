@@ -2,6 +2,7 @@
 
     load_raw ──> dbt_run ──┬──> daily_revenue
                            └──> newsletter_export
+    fraud_pipelines
 
 Each task reaches OpenLineage a different way, because a pilot's DAGs do:
 
@@ -13,6 +14,9 @@ Each task reaches OpenLineage a different way, because a pilot's DAGs do:
   SQL for its lineage, and nobody declares any.
 - `newsletter_export` runs under `art30-emit`, the one task that emits its own
   purpose and legal basis.
+- `fraud_pipelines` runs pipeline-runtime's three example pipelines, which emit the
+  `processing` facet, the provenance facet and resolved classification as they run.
+  It shares nothing with the other tasks, as a second team's pipelines would not.
 
 The day's data comes from `generate.py`, chosen by the logical date, so
 `airflow dags test acme_daily 2026-11-03` is always day 2.
@@ -118,6 +122,18 @@ with DAG(
             f"--tag {WAREHOUSE.rsplit('/', 1)[0]}/acme.marts.crm_customers:data_category=contact "
             f"-- {TOOLS}/python /lab/jobs/newsletter_export.py "
             "postgresql://acme:acme@warehouse:5432/acme /warehouse/exports/newsletter_optins.csv"
+        ),
+        append_env=True,
+    )
+
+    # A fresh directory per day: the demo refuses one holding files it did not write.
+    # OPENLINEAGE_CONFIG reaches it from the environment, so its events go through
+    # the same composite transport as every other task's (pipeline-runtime 0.2.12).
+    fraud = BashOperator(
+        task_id="fraud_pipelines",
+        bash_command=(
+            "rm -rf /warehouse/pipeline-runtime/{{ ds }} && "
+            "/opt/pipeline-runtime/bin/pipeline-runtime demo /warehouse/pipeline-runtime/{{ ds }}"
         ),
         append_env=True,
     )

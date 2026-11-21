@@ -144,6 +144,9 @@ services:
     build: ./airflow
     profiles: ["run"]
     entrypoint: ["/opt/airflow/day.sh"]
+    # The host's uid with group 0, as Airflow's own Compose file does: on Linux a
+    # bind mount belongs to the host user, and uid 50000 could not write events/.
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on: &airflow-depends
       s3:
         condition: service_healthy
@@ -203,6 +206,7 @@ services:
     build: ./airflow
     profiles: ["scheduler"]
     command: ["standalone"]
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       <<: *airflow-depends
       airflow-db:

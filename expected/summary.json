@@ -180,6 +180,26 @@
       "classification": [],
       "domain": "crm",
       "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/acme_daily.fraud_pipelines",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [],
+      "domain": "crm",
+      "gaps": [
         "purpose came from the mapping file, not from an emitted facet",
         "legal basis came from the mapping file, not from an emitted facet"
       ],
@@ -230,13 +250,336 @@
       "reads": [],
       "unclassified": [],
       "writes": []
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": [
+            "cordata://finance/finance_curated.merchant_settlement_daily"
+          ]
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "none",
+          "writes": [
+            "cordata://finance/finance_curated.merchant_settlement_daily"
+          ]
+        }
+      ],
+      "domain": "finance",
+      "gaps": [],
+      "job": "cordata.finance/merchant-settlement-daily",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "merchant-settlement"
+      },
+      "reads": [
+        "cordata://fraud/fraud_raw.transactions"
+      ],
+      "unclassified": [
+        "cordata://fraud/fraud_raw.transactions"
+      ],
+      "writes": [
+        "cordata://finance/finance_curated.merchant_settlement_daily"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [
+            "cordata://finance/finance_curated.merchant_settlement_daily"
+          ],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": []
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [
+            "cordata://finance/finance_curated.merchant_settlement_daily"
+          ],
+          "unrecognised": false,
+          "value": "none",
+          "writes": []
+        }
+      ],
+      "domain": "finance",
+      "gaps": [],
+      "job": "cordata.finance/merchant-settlement-daily.validate",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "merchant-settlement"
+      },
+      "reads": [
+        "cordata://finance/finance_curated.merchant_settlement_daily"
+      ],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ]
+        },
+        {
+          "art30_item": "f",
+          "declared_by": [],
+          "key": "retention",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "7y",
+          "writes": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ]
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "customer",
+          "writes": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ]
+        }
+      ],
+      "domain": "fraud",
+      "gaps": [],
+      "job": "cordata.fraud/transactions-scored-daily",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "legitimate-interest"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "fraud-detection"
+      },
+      "reads": [
+        "cordata://fraud/fraud_raw.transactions"
+      ],
+      "unclassified": [
+        "cordata://fraud/fraud_raw.transactions"
+      ],
+      "writes": [
+        "cordata://fraud/fraud_curated.transactions_scored"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": []
+        },
+        {
+          "art30_item": "f",
+          "declared_by": [],
+          "key": "retention",
+          "provenance": "facet",
+          "reads": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ],
+          "unrecognised": false,
+          "value": "7y",
+          "writes": []
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [
+            "cordata://fraud/fraud_curated.transactions_scored"
+          ],
+          "unrecognised": false,
+          "value": "customer",
+          "writes": []
+        }
+      ],
+      "domain": "fraud",
+      "gaps": [],
+      "job": "cordata.fraud/transactions-scored-daily.validate",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "legitimate-interest"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "fraud-detection"
+      },
+      "reads": [
+        "cordata://fraud/fraud_curated.transactions_scored"
+      ],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ]
+        },
+        {
+          "art30_item": "f",
+          "declared_by": [],
+          "key": "retention",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "10y",
+          "writes": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ]
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [],
+          "unrecognised": false,
+          "value": "customer",
+          "writes": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ]
+        }
+      ],
+      "domain": "policy",
+      "gaps": [],
+      "job": "cordata.policy/claims-ingest",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "claims-processing"
+      },
+      "reads": [
+        "cordata://policy/policy_raw.claims"
+      ],
+      "unclassified": [
+        "cordata://policy/policy_raw.claims"
+      ],
+      "writes": [
+        "cordata://policy/policy_raw.claims_deduped"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "e",
+          "declared_by": [],
+          "key": "residency",
+          "provenance": "facet",
+          "reads": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ],
+          "unrecognised": false,
+          "value": "eu",
+          "writes": []
+        },
+        {
+          "art30_item": "f",
+          "declared_by": [],
+          "key": "retention",
+          "provenance": "facet",
+          "reads": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ],
+          "unrecognised": false,
+          "value": "10y",
+          "writes": []
+        },
+        {
+          "art30_item": "c",
+          "declared_by": [],
+          "key": "subject_type",
+          "provenance": "facet",
+          "reads": [
+            "cordata://policy/policy_raw.claims_deduped"
+          ],
+          "unrecognised": false,
+          "value": "customer",
+          "writes": []
+        }
+      ],
+      "domain": "policy",
+      "gaps": [],
+      "job": "cordata.policy/claims-ingest.validate",
+      "legal_basis": {
+        "provenance": "facet",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "facet",
+        "value": "claims-processing"
+      },
+      "reads": [
+        "cordata://policy/policy_raw.claims_deduped"
+      ],
+      "unclassified": [],
+      "writes": []
     }
   ],
   "complete": false,
   "earned": "every activity stands on emitted evidence",
   "reasons": [
-    "5 of 7 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven",
-    "1 of 7 activities has no purpose or no legal basis from any source",
-    "declared in scope but produced no lineage in the window: fraud \u2014 the domain in view named crm was guessed from the job namespace, and a wrong guess reads the same as silence; `domain:` on a mapping rule overrides the guess"
+    "5 of 14 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven",
+    "2 of 14 activities have no purpose or no legal basis from any source"
   ]
 }

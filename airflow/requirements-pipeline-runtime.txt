@@ -1,7 +1,8 @@
 # pipeline-runtime, in a virtualenv of its own: its run extra brings DuckDB,
 # pandas, PyArrow and Great Expectations, whose pins are no business of dbt's.
-# 0.2.12 is the first release that honours OPENLINEAGE_CONFIG (pipeline-runtime#17).
-cordata-pipeline-runtime[run]==0.2.12
+# 0.2.12 honours OPENLINEAGE_CONFIG (pipeline-runtime#17); 0.2.13 names the launcher
+# as parent from OPENLINEAGE_PARENT_ID (#19).
+cordata-pipeline-runtime[run]==0.2.13
 # What the transports in openlineage.yml need, as the other two environments have:
 # without them the composite's bucket children fail with "fsspec is not
 # available" and the task fails with them.

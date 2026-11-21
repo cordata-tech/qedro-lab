@@ -111,10 +111,13 @@ with DAG(
         ],
     )
 
+    # The task's run is passed as parent, as dbt_run passes it to dbt-ol, so the
+    # task reads as the launcher it is rather than as processing nobody declared
+    # (art30-emit 0.2.0, art30-emit#1).
     export = BashOperator(
         task_id="newsletter_export",
         bash_command=(
-            f"{TOOLS}/art30-emit --job acme.crm/newsletter-export "
+            f"{PARENT} {TOOLS}/art30-emit --job acme.crm/newsletter-export "
             "--purpose direct-marketing --legal-basis consent "
             f"--reads {WAREHOUSE.rsplit('/', 1)[0]}/acme.marts.crm_consent_state "
             f"--reads {WAREHOUSE.rsplit('/', 1)[0]}/acme.marts.crm_customers "
@@ -128,12 +131,14 @@ with DAG(
 
     # A fresh directory per day: the demo refuses one holding files it did not write.
     # OPENLINEAGE_CONFIG reaches it from the environment, so its events go through
-    # the same composite transport as every other task's (pipeline-runtime 0.2.12).
+    # the same composite transport as every other task's (pipeline-runtime 0.2.12),
+    # and the parent names this task as its launcher (0.2.13, pipeline-runtime#19).
     fraud = BashOperator(
         task_id="fraud_pipelines",
         bash_command=(
             "rm -rf /warehouse/pipeline-runtime/{{ ds }} && "
-            "/opt/pipeline-runtime/bin/pipeline-runtime demo /warehouse/pipeline-runtime/{{ ds }}"
+            f"{PARENT} /opt/pipeline-runtime/bin/pipeline-runtime demo "
+            "/warehouse/pipeline-runtime/{{ ds }}"
         ),
         append_env=True,
     )

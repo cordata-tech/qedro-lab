@@ -180,26 +180,6 @@
       "classification": [],
       "domain": "crm",
       "gaps": [
-        "no purpose declared",
-        "no legal basis declared"
-      ],
-      "job": "acme/acme_daily.fraud_pipelines",
-      "legal_basis": {
-        "provenance": "absent",
-        "value": ""
-      },
-      "purpose": {
-        "provenance": "absent",
-        "value": ""
-      },
-      "reads": [],
-      "unclassified": [],
-      "writes": []
-    },
-    {
-      "classification": [],
-      "domain": "crm",
-      "gaps": [
         "purpose came from the mapping file, not from an emitted facet",
         "legal basis came from the mapping file, not from an emitted facet"
       ],
@@ -230,26 +210,6 @@
         "postgres://warehouse:5432/acme.raw.customers",
         "postgres://warehouse:5432/acme.raw.orders"
       ]
-    },
-    {
-      "classification": [],
-      "domain": "crm",
-      "gaps": [
-        "no purpose declared",
-        "no legal basis declared"
-      ],
-      "job": "acme/acme_daily.newsletter_export",
-      "legal_basis": {
-        "provenance": "absent",
-        "value": ""
-      },
-      "purpose": {
-        "provenance": "absent",
-        "value": ""
-      },
-      "reads": [],
-      "unclassified": [],
-      "writes": []
     },
     {
       "classification": [
@@ -579,7 +539,6 @@
   "complete": false,
   "earned": "every activity stands on emitted evidence",
   "reasons": [
-    "5 of 14 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven",
-    "2 of 14 activities have no purpose or no legal basis from any source"
+    "5 of 12 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven"
   ]
 }

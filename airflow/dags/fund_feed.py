@@ -28,8 +28,13 @@ PRICES = "s3://funds/provider/prices.csv"
 DB = "postgres://warehouse:5432/acme.funds"
 FUNDS = ("MF0001", "MF0002", "MF0003")
 
-# What every job's command starts with: the parent run, and the feed's own transport.
+# What every job's command starts with: the parent run, the feed's own transport,
+# and the code the jobs run, as a team would set it in a job image at build time.
+# Only when LAB_COMMIT is known: a repository with no commit identifies nothing.
 LINEAGE = (
+    'if [ -n "$LAB_COMMIT" ]; then export '
+    "ART30_EMIT_REPOSITORY=https://github.com/cordata-tech/qedro-lab "
+    'ART30_EMIT_COMMIT="$LAB_COMMIT"; fi; '
     "OPENLINEAGE_CONFIG=/lab/openlineage-funds.yml "
     "OPENLINEAGE_PARENT_ID={{ macros.OpenLineageProviderPlugin.lineage_parent_id(task_instance) }} "
     "OPENLINEAGE_ROOT_PARENT_ID="
@@ -37,10 +42,14 @@ LINEAGE = (
 )
 
 
-def wrapped(job: str, reads: list[str], writes: list[str], command: str) -> str:
-    """The job's command as it ran before, with art30-emit in front of it."""
+def wrapped(job: str, reads: list[str], writes: list[str], script: str) -> str:
+    """The job's command as it ran before, with art30-emit in front of it, naming the
+    script it runs as the path of its code in the repository."""
     declared = " ".join([*(f"--reads {r}" for r in reads), *(f"--writes {w}" for w in writes)])
-    return f"{LINEAGE}{TOOLS}/art30-emit --job acme.funds/{job} {declared} -- {command}"
+    return (
+        f"{LINEAGE}{TOOLS}/art30-emit --job acme.funds/{job} {declared} "
+        f"--path lab/jobs/{script} -- {TOOLS}/python /lab/jobs/{script}"
+    )
 
 
 with DAG(
@@ -61,7 +70,7 @@ with DAG(
             "prices-ingest",
             [PRICES],
             [f"{DB}.prices", f"{DB}.share_classes"],
-            f"{TOOLS}/python /lab/jobs/fund_ingest.py",
+            "fund_ingest.py",
         ),
         append_env=True,
     )
@@ -76,7 +85,7 @@ with DAG(
             "ongoing-charges",
             [f"{DB}.prices", f"{DB}.share_classes"],
             [f"{DB}.ongoing_charges"],
-            f"{TOOLS}/python /lab/jobs/fund_charges.py",
+            "fund_charges.py",
         ),
         append_env=True,
     )
@@ -86,7 +95,7 @@ with DAG(
             "kid-reports",
             [f"{DB}.ongoing_charges"],
             [f"s3://funds/reports/kid/{fund}.pdf" for fund in FUNDS],
-            f"{TOOLS}/python /lab/jobs/fund_reports.py",
+            "fund_reports.py",
         ),
         append_env=True,
     )

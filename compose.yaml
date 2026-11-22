@@ -179,6 +179,9 @@ services:
       # and the supervisor ended it after the first three; the rest never got it.
       AIRFLOW__CORE__TASK_SUCCESS_OVERTIME: "180"
       AIRFLOW_CONN_WAREHOUSE: postgres://acme:acme@warehouse:5432/acme
+      # The commit of this repository the jobs run at, for the fund feed's jobs to
+      # report as the code they ran. CI sets it in .env; unset, they report none.
+      LAB_COMMIT: ${LAB_COMMIT:-}
     volumes: &airflow-volumes
       - ./airflow/dags:/opt/airflow/dags:ro
       - ./airflow/day.sh:/opt/airflow/day.sh:ro

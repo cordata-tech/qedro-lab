@@ -35,6 +35,8 @@ jobs:
         # Airflow runs as this runner's uid, so it can write the bind-mounted events/.
         run: |
           echo "AIRFLOW_UID=$(id -u)" > .env
+          # The commit the fund feed's jobs report as the code they ran.
+          echo "LAB_COMMIT=$GITHUB_SHA" >> .env
           mkdir -p events/directory events/funds records
           docker compose --profile run --profile scheduler build
           docker compose --profile scheduler up -d --wait

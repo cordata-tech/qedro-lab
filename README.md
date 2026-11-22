@@ -170,9 +170,13 @@ missing for the record to stand on its own evidence: no step names a commit, bec
 signed; and the provenance of a document does not show that a check on its inputs
 failed that day, which is in the assertion history instead.
 
-The feed's lineage is kept apart from ACME's because fund prices are not personal data,
-and qedro cannot leave a job out of an Art. 30 record: in one directory, the jobs would
-appear in ACME's record as processing with no purpose.
+The feed's lineage is kept apart from ACME's because fund prices are not personal data.
+That is not enough: Airflow's own events for the feed's five tasks go wherever Airflow
+sends everything, and with the jobs that name them as parent out of view, ACME's
+Art. 30 record lists them as activities with no purpose, and withholds the mark for it.
+qedro has no way to leave a job out of the record yet (cordata-tech/qedro#65), so
+`expected/summary.json` holds those five activities until it does; a team whose one
+Airflow runs both kinds of pipeline meets the same thing.
 
 ## What it has found so far
 

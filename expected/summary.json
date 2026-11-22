@@ -255,6 +255,106 @@
       ]
     },
     {
+      "classification": [],
+      "domain": "acme",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/fund_feed.check_prices",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [],
+      "domain": "acme",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/fund_feed.deliver_prices",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [],
+      "domain": "acme",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/fund_feed.ingest_prices",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [],
+      "domain": "acme",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/fund_feed.kid_reports",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
+      "classification": [],
+      "domain": "acme",
+      "gaps": [
+        "no purpose declared",
+        "no legal basis declared"
+      ],
+      "job": "acme/fund_feed.ongoing_charges",
+      "legal_basis": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "purpose": {
+        "provenance": "absent",
+        "value": ""
+      },
+      "reads": [],
+      "unclassified": [],
+      "writes": []
+    },
+    {
       "classification": [
         {
           "art30_item": "e",
@@ -582,6 +682,7 @@
   "complete": false,
   "earned": "every activity stands on emitted evidence",
   "reasons": [
-    "6 of 13 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven"
+    "6 of 18 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven",
+    "5 of 18 activities have no purpose or no legal basis from any source"
   ]
 }

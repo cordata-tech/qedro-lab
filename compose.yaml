@@ -249,6 +249,8 @@ services:
       # The repository, read-only, so a capture can name every pinned version.
       - .:/repo:ro
       - ./captures:/captures
+      # What `lab records` writes, a directory per day, for a console to read.
+      - ./records:/records
 
 volumes:
   marquez-db:

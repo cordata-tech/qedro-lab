@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.1.0 | a task that emits its own purpose and legal basis |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro | 0.25.0 | the reader under test |
+| qedro, with its PDF extra | 0.27.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the
@@ -44,8 +44,20 @@ docker compose exec airflow-scheduler /opt/airflow/scheduled.sh 2   # day 2: mor
 docker compose run --rm lab check                        # every source read back and compared
 docker compose run --rm lab summary                      # what the record says, minus run ids
 docker compose run --rm lab capture <name> --days 2      # the events as a fixture for qedro
+docker compose run --rm lab records --day 2              # day 2's records, as a nightly job
 docker compose --profile run --profile scheduler down -v # everything, including stored events
 ```
+
+`lab records --day N` writes what a partner's nightly job would into `records/<date>/`:
+the Art. 30 record, the assertion history, the provenance of
+`acme.finance.daily_revenue` and the erasure of `acme.raw.customers` requested on the
+morning of that day, each as JSON, PDF and workbook (the assertion history has no PDF
+yet, cordata-tech/qedro#37). The day's window ends at that day's last event, so an
+earlier day can be written again later and say the same. Sign-off files are carried
+forward from the latest earlier day, as they would stay in the repository a DPO signs
+in, and where one exists, `status.json` says whether the signed record still matches
+the day's lineage. Each day is its own directory, so any day can be opened again; a
+console reads one of them.
 
 Airflow's UI is then at <http://127.0.0.1:8080>, with the password `airflow standalone`
 prints in its log. A quicker mode runs each day in one process with `airflow dags

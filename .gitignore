@@ -2,3 +2,4 @@ events/
 __pycache__/
 captures/
 .env
+records/

@@ -4,6 +4,7 @@
     docker compose run --rm lab check       # every source read, and compared
     docker compose run --rm lab summary     # the record's stable part, for CI
     docker compose run --rm lab capture airflow-3.4 --days 2   # a fixture for qedro
+    docker compose run --rm lab records --day 1   # what a partner's nightly job writes
 
 Each emitter sends every event to every destination through the composite transport
 in openlineage.yml. `check` then reads them back the way a pilot would — with qedro's
@@ -17,16 +18,20 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import uuid
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import fsspec
 
-EVENTS = Path("/events/directory")
+# The environment overrides are for running `records` outside the container.
+EVENTS = Path(os.environ.get("LAB_EVENTS", "/events/directory"))
+RECORDS = Path(os.environ.get("LAB_RECORDS", "/records"))
+CONFIG = Path(__file__).parent / "qedro.yaml"
 REPO = Path("/repo")
 BUCKET = "openlineage"
 
@@ -157,7 +162,7 @@ def summary() -> dict:
     that changes what the record says shows up as a diff to review.
     """
     out = subprocess.run(
-        ["qedro", "ropa", str(EVENTS), "--config", "/lab/qedro.yaml", "--format", "json"],
+        ["qedro", "ropa", str(EVENTS), "--config", str(CONFIG), "--format", "json"],
         check=True,
         capture_output=True,
         text=True,
@@ -223,6 +228,84 @@ def capture(name: str, days: int) -> None:
     print(f"  wrote {len(events)} events and a README to {target}")
 
 
+#: The day `scheduled.sh 1` runs; day N is N - 1 days after it.
+FIRST_DAY = date(2026, 11, 2)
+
+#: What the nightly job writes, as a partner would point it: the published revenue
+#: figure's provenance, and the erasure of the raw customer table.
+PROVENANCE = "postgres://warehouse:5432/acme.finance.daily_revenue"
+ERASED = "postgres://warehouse:5432/acme.raw.customers"
+
+
+def _day(day: int) -> tuple[str, str, str]:
+    """The logical date of day *day*, and the first and last event of its DAG run.
+
+    Events carry the time they were sent, not the day the DAG ran for, so the day is
+    found through the logical date Airflow's run facet names. Its first event stands
+    for the morning a customer's erasure was requested; its last ends the window, so
+    a day's records describe that day even when they are written again later.
+    """
+    logical = (FIRST_DAY + timedelta(days=day - 1)).isoformat()
+    times = []
+    for path in EVENTS.iterdir():
+        event = json.loads(path.read_text())
+        run = event["run"].get("facets", {}).get("airflow", {}).get("dagRun", {})
+        if str(run.get("logical_date", "")).startswith(logical):
+            times.append(event["eventTime"])
+    if not times:
+        raise SystemExit(f"day {day} ({logical}) has no events: run scheduled.sh {day} first")
+    return logical, min(times), max(times)
+
+
+def _write(*args: str) -> None:
+    """Run qedro as a scheduled job would. A record that withholds the mark still
+    exits 0; anything else that is not 0 is a failure the job should stop on."""
+    result = subprocess.run(
+        [os.environ.get("QEDRO", "qedro"), *args], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.stderr.write(result.stdout + result.stderr)
+        raise SystemExit(f"qedro {args[0]} exited {result.returncode}")
+
+
+def records(day: int) -> None:
+    """Write every projection for *day* into records/<date>/, as JSON, PDF and
+    workbook, and status.json against the day's lineage where anything is signed.
+
+    Each day gets its own directory, so any day can be opened again. Sign-off files
+    are carried forward from the latest earlier day, as they would stay in the
+    repository a DPO signs in; the day's records are then built against them.
+    """
+    logical, morning, until = _day(day)
+    target = RECORDS / logical
+    target.mkdir(parents=True, exist_ok=True)
+    earlier = sorted(p for p in RECORDS.iterdir() if p.is_dir() and p.name < logical)
+    if earlier:
+        for signoff in earlier[-1].glob("*.signoff.json"):
+            if not (target / signoff.name).exists():
+                shutil.copy2(signoff, target / signoff.name)
+    source, window = str(EVENTS), ["--config", str(CONFIG), "--until", until]
+    projections = {
+        "ropa": ["ropa", source, *window],
+        "quality": ["quality", source, *window],
+        "provenance": ["provenance", source, *window, "--dataset", PROVENANCE],
+        "erasure": ["erasure", source, *window, "--dataset", ERASED, "--since", morning],
+    }
+    for name, args in projections.items():
+        signoff = target / f"{name}.signoff.json"
+        if signoff.exists():
+            args = [*args, "--signoff", str(signoff)]
+        # qedro writes no PDF of the quality history yet (cordata-tech/qedro#37).
+        for suffix in ("json", "xlsx") if name == "quality" else ("json", "pdf", "xlsx"):
+            _write(*args, "--out", str(target / f"{name}.{suffix}"))
+    if any(target.glob("*.signoff.json")):
+        _write(
+            "status", str(target), "--against", source, *window,
+            "--format", "json", "--out", str(target / "status.json"),
+        )
+    print(f"  wrote {logical}'s records to {target}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="lab")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -232,8 +315,12 @@ def main() -> int:
     capture_cmd = sub.add_parser("capture", help="write the events as a fixture")
     capture_cmd.add_argument("name")
     capture_cmd.add_argument("--days", type=int, required=True)
+    records_cmd = sub.add_parser("records", help="write a day's records, as a nightly job")
+    records_cmd.add_argument("--day", type=int, required=True)
     args = parser.parse_args()
-    if args.command == "setup":
+    if args.command == "records":
+        records(args.day)
+    elif args.command == "setup":
         setup()
     elif args.command == "summary":
         print(json.dumps(summary(), indent=2, sort_keys=True))

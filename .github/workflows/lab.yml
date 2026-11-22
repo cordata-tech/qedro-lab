@@ -35,16 +35,17 @@ jobs:
         # Airflow runs as this runner's uid, so it can write the bind-mounted events/.
         run: |
           echo "AIRFLOW_UID=$(id -u)" > .env
-          mkdir -p events/directory
+          mkdir -p events/directory records
           docker compose --profile run --profile scheduler build
           docker compose --profile scheduler up -d --wait
 
-      - name: Run the days
+      - name: Run the days, writing each day's records after it
         env:
           DAYS: ${{ inputs.days || '14' }}
         run: |
           for day in $(seq "$DAYS"); do
             docker compose exec -T airflow-scheduler /opt/airflow/scheduled.sh "$day"
+            docker compose run --rm lab records --day "$day"
           done
 
       - name: Every source holds the same events
@@ -63,4 +64,12 @@ jobs:
           path: |
             events/directory/
             summary.json
+          retention-days: 14
+
+      - name: Keep each day's records, for a console to read
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: lab-records
+          path: records/
           retention-days: 14

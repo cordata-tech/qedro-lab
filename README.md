@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.1.0 | a task that emits its own purpose and legal basis |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro, with its PDF extra | 0.27.0 | the reader under test, and what `lab records` writes with |
+| qedro, with its PDF extra | 0.28.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the

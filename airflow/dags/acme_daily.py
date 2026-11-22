@@ -19,15 +19,17 @@ Each task reaches OpenLineage a different way, because a pilot's DAGs do:
   It shares nothing with the other tasks, as a second team's pipelines would not.
 
 The day's data comes from `generate.py`, chosen by the logical date, so
-`airflow dags test acme_daily 2026-11-03` is always day 2.
+`airflow dags test acme_daily 2026-11-03` is always day 2. Which dbt models run is
+chosen the same way, from the `dbt` lines of `/lab/scenario.yaml`.
 """
 
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
+import yaml
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
@@ -46,6 +48,17 @@ PARENT = (
     "OPENLINEAGE_ROOT_PARENT_ID="
     "{{ macros.OpenLineageProviderPlugin.lineage_root_parent_id(task_instance) }}"
 )
+
+
+def dbt_exclude(ds: str) -> str:
+    """dbt's `--exclude` for the day *ds*: the models the scenario adds on a later
+    day, and the ones it skips on this one. Empty on an ordinary day."""
+    day = (date.fromisoformat(ds) - generate.START).days + 1
+    steps = yaml.safe_load(Path("/lab/scenario.yaml").read_text()) or []
+    dbt = [(s["day"], s["dbt"]) for s in steps if "dbt" in s]
+    models = {m["add"] for d, m in dbt if "add" in m and d > day}
+    models |= {m["skip"] for d, m in dbt if "skip" in m and d == day}
+    return f"--exclude {' '.join(sorted(models))}" if models else ""
 
 
 def load_raw(logical_date: datetime, **_: object) -> None:
@@ -77,6 +90,7 @@ with DAG(
     schedule=None,
     catchup=False,
     tags=["acme"],
+    user_defined_macros={"dbt_exclude": dbt_exclude},
 ):
     load = PythonOperator(
         task_id="load_raw",
@@ -92,7 +106,8 @@ with DAG(
             f"{PARENT} PATH={TOOLS}:$PATH "
             "OPENLINEAGE_NAMESPACE=acme DBT_SEND_ANONYMOUS_USAGE_STATS=false "
             "DBT_TARGET_PATH=/warehouse/dbt/target DBT_LOG_PATH=/warehouse/dbt/logs "
-            f"{TOOLS}/dbt-ol run --project-dir /lab/dbt --profiles-dir /lab/dbt"
+            f"{TOOLS}/dbt-ol run --project-dir /lab/dbt --profiles-dir /lab/dbt "
+            "{{ dbt_exclude(ds) }}"
         ),
         append_env=True,
     )

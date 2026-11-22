@@ -1,0 +1,58 @@
+# A fortnight in ACME's life, one line per thing that happens (qedro-lab#7), so the
+# records show what a data protection officer lives through rather than fourteen
+# identical days. A new situation is one more line here.
+#
+# Day 1 is 2026-11-02. Two readers:
+#
+# - the DAG (airflow/dags/acme_daily.py) reads `dbt`: a model added from a day on,
+#   or skipped on one day, changes what that day's run builds;
+# - `lab records --day N` reads the rest. `map` and `config` change qedro.yaml from
+#   that day on; `erase` requests an erasure that morning; `sign`, `regenerate` and
+#   `promote` are what people do after the day's records are written, in this order.
+
+# Max prepares the record and sends it for sign-off; Erika, a second person, approves.
+- day: 3
+  sign: {record: ropa, as: Max Mustermann, state: for sign-off}
+- day: 3
+  sign: {record: ropa, as: Erika Mustermann, state: approved, note: reviewed with the data team}
+
+# A new dbt model scores customers by spend. The signed record does not list it, so
+# `qedro status --against` finds the record stale.
+- day: 6
+  dbt: {add: crm_customer_segments}
+
+# Max regenerates: the fresh record is written beside the signed one as
+# ropa.next.json and sent for sign-off, naming the new activity.
+- day: 7
+  regenerate: {as: Max Mustermann}
+
+# A customer asks to be erased; raw.customers is reloaded without them that morning.
+# The day's dbt run leaves billing_invoices out, so it still holds what it held, and
+# the erasure record names it. Day 9's run rebuilds it.
+- day: 8
+  erase: postgres://warehouse:5432/acme.raw.customers
+- day: 8
+  dbt: {skip: billing_invoices}
+
+# Erika approves the regenerated version, and it replaces the record in force.
+- day: 9
+  sign: {record: ropa.next, as: Erika Mustermann, state: approved}
+- day: 9
+  promote: {record: ropa}
+
+# Finance reclassifies the daily revenue figure: it now answers a reporting duty,
+# not invoicing. The approved record says otherwise, so it goes stale again.
+- day: 10
+  map:
+    acme/acme_daily.daily_revenue: {purpose: financial-reporting, legal_basis: legal-obligation}
+
+# Erika regenerates this time, and with four eyes switched off for the week of
+# holidays, approves her own version: the record says no second person approved it.
+- day: 11
+  regenerate: {as: Erika Mustermann}
+- day: 12
+  config: {signoff: {four_eyes: false}}
+- day: 12
+  sign: {record: ropa.next, as: Erika Mustermann, state: approved}
+- day: 12
+  promote: {record: ropa}

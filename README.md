@@ -118,6 +118,29 @@ docker compose run --rm --entrypoint qedro lab ropa /events/directory --config /
 Marquez's web UI is at <http://127.0.0.1:3000>. Every port is bound to `127.0.0.1`,
 because the emulators run with fixed, published credentials.
 
+## The fortnight
+
+The fourteen days are not identical. `lab/scenario.yaml` scripts what a data protection
+officer at ACME lives through, one line per event, and both the DAG and `lab records`
+read it, so another situation is one more line:
+
+| Day | Date | What happens | What the records show |
+|---|---|---|---|
+| 3 | 2026-11-04 | Max Mustermann sends the Art. 30 record for sign-off; Erika Mustermann approves it | `ropa.json` approved, by a second person |
+| 6 | 2026-11-07 | a new dbt model, `crm_customer_segments`, scores customers by spend | `status.json`: the signed record is stale, with one new activity |
+| 7 | 2026-11-08 | Max regenerates | `ropa.next.json` beside it, for sign-off, naming the new activity |
+| 8 | 2026-11-09 | a customer's erasure is requested; that day's dbt run leaves `billing_invoices` out | `erasure.json` names `billing_invoices` as not written since |
+| 9 | 2026-11-10 | Erika approves the regenerated version, which replaces the record | `ropa.json` approved again; the erasure has reached everything |
+| 10 | 2026-11-11 | finance reclassifies `daily_revenue` from invoicing to financial reporting | the approved record is stale on that activity's purpose and legal basis |
+| 11 | 2026-11-12 | Erika regenerates | `ropa.next.json` for sign-off, prepared by Erika |
+| 12 | 2026-11-13 | four eyes switched off; Erika approves her own version | `ropa.json` approved with no second person |
+
+Once signed, a record is kept as it was signed, as it would be in the repository a DPO
+works in: `lab records` builds it again only from the window and `qedro.yaml` it was
+signed under (`.frozen.yaml` in each day's directory says which), so its JSON shows
+where its sign-off stands, and `status.json` compares it with that night's lineage.
+Each day's directory holds the `qedro.yaml` it used.
+
 ## What it has found so far
 
 Each finding is fixed in the configuration, with its cause written beside the fix.

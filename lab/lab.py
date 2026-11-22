@@ -27,6 +27,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import fsspec
+import yaml
 
 # The environment overrides are for running `records` outside the container.
 EVENTS = Path(os.environ.get("LAB_EVENTS", "/events/directory"))
@@ -231,10 +232,16 @@ def capture(name: str, days: int) -> None:
 #: The day `scheduled.sh 1` runs; day N is N - 1 days after it.
 FIRST_DAY = date(2026, 11, 2)
 
-#: What the nightly job writes, as a partner would point it: the published revenue
-#: figure's provenance, and the erasure of the raw customer table.
+#: The fortnight's events, a line each (qedro-lab#7).
+SCENARIO = Path(__file__).parent / "scenario.yaml"
+
+#: The provenance the nightly job writes, as a partner would point it: the published
+#: revenue figure's.
 PROVENANCE = "postgres://warehouse:5432/acme.finance.daily_revenue"
-ERASED = "postgres://warehouse:5432/acme.raw.customers"
+
+#: Beside each day's records, which of them are frozen and how each was built. Not
+#: `.json`, so a console reading the directory does not take it for a record.
+FROZEN = ".frozen.yaml"
 
 
 def _day(day: int) -> tuple[str, str, str]:
@@ -268,41 +275,151 @@ def _write(*args: str) -> None:
         raise SystemExit(f"qedro {args[0]} exited {result.returncode}")
 
 
-def records(day: int) -> None:
-    """Write every projection for *day* into records/<date>/, as JSON, PDF and
-    workbook, and status.json against the day's lineage where anything is signed.
+def _steps() -> list[dict]:
+    return yaml.safe_load(SCENARIO.read_text()) or []
 
-    Each day gets its own directory, so any day can be opened again. Sign-off files
-    are carried forward from the latest earlier day, as they would stay in the
-    repository a DPO signs in; the day's records are then built against them.
+
+def _merge(into: dict, change: dict) -> None:
+    for key, value in change.items():
+        if isinstance(value, dict) and isinstance(into.get(key), dict):
+            _merge(into[key], value)
+        else:
+            into[key] = value
+
+
+def _config(day: int, target: Path) -> Path:
+    """qedro.yaml as it stands on *day*: lab/qedro.yaml with every `map` and `config`
+    line up to that day applied, written beside the day's records so each record
+    names the configuration it was built with."""
+    config = yaml.safe_load(CONFIG.read_text())
+    for step in _steps():
+        if step["day"] <= day:
+            _merge(config, {"jobs": step.get("map", {}), **step.get("config", {})})
+    path = target / "qedro.yaml"
+    path.write_text(
+        f"# ACME's qedro.yaml on day {day}: lab/qedro.yaml with lab/scenario.yaml's\n"
+        "# changes up to this day.\n" + yaml.safe_dump(config, sort_keys=False)
+    )
+    return path
+
+
+def _build(target: Path, file: str, args: list[str]) -> None:
+    """Write *file* and its PDF and workbook from *args*, with the sign-off it shares
+    with its record where one exists: `ropa.next.json` is a version of `ropa.json`."""
+    stem = file.removesuffix(".json")
+    signoff = target / f"{stem.split('.')[0]}.signoff.json"
+    extra = ["--signoff", str(signoff)] if signoff.exists() else []
+    # qedro writes no PDF of the assertion history yet (cordata-tech/qedro#37).
+    for suffix in ("json", "xlsx") if args[0] == "quality" else ("json", "pdf", "xlsx"):
+        _write(*args, *extra, "--out", str(target / f"{stem}.{suffix}"))
+
+
+def records(day: int) -> None:
+    """Write day *day*'s records into records/<date>/ as a partner's nightly job would,
+    then do what the scenario's people do that day, as JSON, PDF and workbook.
+
+    A record nobody has signed is built afresh each night. One that has been signed is
+    frozen, as it would be in the repository a DPO signs in: it is built again only
+    from the window and configuration it was signed with, so it still says what it
+    said, and `status.json` compares it with the night's lineage. Regenerating writes
+    the fresh version beside it as `ropa.next.json`; promoting replaces the record with
+    it. Each day is its own directory, written from the day before, so any day can be
+    opened again, and writing one again replaces it.
     """
-    logical, morning, until = _day(day)
+    logical, _, until = _day(day)
     target = RECORDS / logical
-    target.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True)
     days = sorted(p for p in RECORDS.iterdir() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p.name))
     earlier = [p for p in days if p.name < logical]
+    frozen: dict[str, list[str]] = {}
     if earlier:
         for signoff in earlier[-1].glob("*.signoff.json"):
-            if not (target / signoff.name).exists():
-                shutil.copy2(signoff, target / signoff.name)
-    source, window = str(EVENTS), ["--config", str(CONFIG), "--until", until]
-    projections = {
-        "ropa": ["ropa", source, *window],
-        "quality": ["quality", source, *window],
-        "provenance": ["provenance", source, *window, "--dataset", PROVENANCE],
-        "erasure": ["erasure", source, *window, "--dataset", ERASED, "--since", morning],
+            shutil.copy2(signoff, target / signoff.name)
+        if (earlier[-1] / FROZEN).exists():
+            frozen = yaml.safe_load((earlier[-1] / FROZEN).read_text()) or {}
+
+    config = _config(day, target)
+    source, window = str(EVENTS), ["--config", str(config), "--until", until]
+    fresh = {
+        "ropa.json": ["ropa", source, *window],
+        "quality.json": ["quality", source, *window],
+        "provenance.json": ["provenance", source, *window, "--dataset", PROVENANCE],
     }
-    for name, args in projections.items():
-        signoff = target / f"{name}.signoff.json"
-        if signoff.exists():
-            args = [*args, "--signoff", str(signoff)]
-        # qedro writes no PDF of the quality history yet (cordata-tech/qedro#37).
-        for suffix in ("json", "xlsx") if name == "quality" else ("json", "pdf", "xlsx"):
-            _write(*args, "--out", str(target / f"{name}.{suffix}"))
+    # An erasure is written from the morning it was requested on, every day after.
+    erasures = [s for s in _steps() if "erase" in s and s["day"] <= day]
+    if erasures:
+        asked = erasures[-1]
+        fresh["erasure.json"] = [
+            "erasure",
+            source,
+            *window,
+            "--dataset",
+            asked["erase"],
+            "--since",
+            _day(asked["day"])[1],
+        ]
+    for file, args in {**fresh, **frozen}.items():
+        _build(target, file, frozen.get(file, args))
+
+    acted = False
+    for step in (s for s in _steps() if s["day"] == day):
+        if "sign" in step:
+            sign = step["sign"]
+            file = f"{sign['record']}.json"
+            frozen.setdefault(file, fresh.get(file, []))
+            note = ["--note", sign["note"]] if "note" in sign else []
+            _write(
+                "sign",
+                str(target / file),
+                "--as",
+                sign["as"],
+                "--state",
+                sign["state"],
+                *note,
+                "--config",
+                str(config),
+            )
+        elif "regenerate" in step:
+            before = set(target.glob("*.next.json"))
+            _write(
+                "status",
+                str(target),
+                "--against",
+                source,
+                *window,
+                "--regenerate",
+                "--as",
+                step["regenerate"]["as"],
+            )
+            for written in set(target.glob("*.next.json")) - before:
+                # The version regenerate wrote is tonight's fresh record of the same kind.
+                frozen[written.name] = fresh[written.name.replace(".next", "")]
+        elif "promote" in step:
+            stem = step["promote"]["record"]
+            frozen[f"{stem}.json"] = frozen.pop(f"{stem}.next.json")
+            for old in target.glob(f"{stem}.next.*"):
+                old.unlink()
+        else:
+            continue
+        acted = True
+    if acted:
+        # Built again so each record's own JSON says where its sign-off now stands.
+        for file, args in frozen.items():
+            _build(target, file, args)
+    (target / FROZEN).write_text(yaml.safe_dump(frozen, sort_keys=True))
+
     if any(target.glob("*.signoff.json")):
         _write(
-            "status", str(target), "--against", source, *window,
-            "--format", "json", "--out", str(target / "status.json"),
+            "status",
+            str(target),
+            "--against",
+            source,
+            *window,
+            "--format",
+            "json",
+            "--out",
+            str(target / "status.json"),
         )
     # records/latest names the newest day, relative so it holds outside the container
     # too: a console pointed at it shows a new day on its next reload. Writing an
@@ -310,7 +427,7 @@ def records(day: int) -> None:
     latest = RECORDS / "latest"
     if latest.is_symlink():
         latest.unlink()
-    latest.symlink_to(max(logical, days[-1].name))
+    latest.symlink_to(max(logical, *(d.name for d in days)))
     print(f"  wrote {logical}'s records to {target}")
 
 

@@ -117,6 +117,49 @@
           ],
           "key": "data_category",
           "provenance": "facet",
+          "reads": [
+            "postgres://warehouse:5432/acme.marts.crm_customers"
+          ],
+          "unrecognised": false,
+          "value": "contact",
+          "writes": []
+        }
+      ],
+      "domain": "crm",
+      "gaps": [
+        "purpose came from the mapping file, not from an emitted facet",
+        "legal basis came from the mapping file, not from an emitted facet"
+      ],
+      "job": "acme/acme.marts.acme.crm_customer_segments",
+      "legal_basis": {
+        "provenance": "mapping",
+        "value": "contract"
+      },
+      "purpose": {
+        "provenance": "mapping",
+        "value": "customer-administration"
+      },
+      "reads": [
+        "postgres://warehouse:5432/acme.marts.billing_invoices",
+        "postgres://warehouse:5432/acme.marts.crm_customers"
+      ],
+      "unclassified": [
+        "postgres://warehouse:5432/acme.marts.billing_invoices",
+        "postgres://warehouse:5432/acme.marts.crm_customer_segments"
+      ],
+      "writes": [
+        "postgres://warehouse:5432/acme.marts.crm_customer_segments"
+      ]
+    },
+    {
+      "classification": [
+        {
+          "art30_item": "c",
+          "declared_by": [
+            "acme.crm/newsletter-export"
+          ],
+          "key": "data_category",
+          "provenance": "facet",
           "reads": [],
           "unrecognised": false,
           "value": "contact",
@@ -539,6 +582,6 @@
   "complete": false,
   "earned": "every activity stands on emitted evidence",
   "reasons": [
-    "5 of 12 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven"
+    "6 of 13 activities rely on the mapping file rather than on an emitted facet, so those entries are asserted rather than proven"
   ]
 }

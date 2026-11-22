@@ -71,5 +71,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: lab-records
-          path: records/
+          # latest links to the newest day, which is in the artefact already.
+          path: |
+            records/
+            !records/latest
           retention-days: 14

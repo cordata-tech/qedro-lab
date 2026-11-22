@@ -56,8 +56,9 @@ yet, cordata-tech/qedro#37). The day's window ends at that day's last event, so 
 earlier day can be written again later and say the same. Sign-off files are carried
 forward from the latest earlier day, as they would stay in the repository a DPO signs
 in, and where one exists, `status.json` says whether the signed record still matches
-the day's lineage. Each day is its own directory, so any day can be opened again; a
-console reads one of them.
+the day's lineage. Each day is its own directory, so any day can be opened again, and
+`records/latest` links to the newest: a console pointed at it shows the next day on
+its next reload.
 
 Airflow's UI is then at <http://127.0.0.1:8080>, with the password `airflow standalone`
 prints in its log. A quicker mode runs each day in one process with `airflow dags

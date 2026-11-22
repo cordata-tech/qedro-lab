@@ -279,7 +279,8 @@ def records(day: int) -> None:
     logical, morning, until = _day(day)
     target = RECORDS / logical
     target.mkdir(parents=True, exist_ok=True)
-    earlier = sorted(p for p in RECORDS.iterdir() if p.is_dir() and p.name < logical)
+    days = sorted(p for p in RECORDS.iterdir() if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p.name))
+    earlier = [p for p in days if p.name < logical]
     if earlier:
         for signoff in earlier[-1].glob("*.signoff.json"):
             if not (target / signoff.name).exists():
@@ -303,6 +304,13 @@ def records(day: int) -> None:
             "status", str(target), "--against", source, *window,
             "--format", "json", "--out", str(target / "status.json"),
         )
+    # records/latest names the newest day, relative so it holds outside the container
+    # too: a console pointed at it shows a new day on its next reload. Writing an
+    # earlier day again leaves it where it is.
+    latest = RECORDS / "latest"
+    if latest.is_symlink():
+        latest.unlink()
+    latest.symlink_to(max(logical, days[-1].name))
     print(f"  wrote {logical}'s records to {target}")
 
 

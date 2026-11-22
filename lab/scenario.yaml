@@ -4,8 +4,9 @@
 #
 # Day 1 is 2026-11-02. Two readers:
 #
-# - the DAG (airflow/dags/acme_daily.py) reads `dbt`: a model added from a day on,
-#   or skipped on one day, changes what that day's run builds;
+# - the DAGs read `dbt` and `funds`: in acme_daily a dbt model added from a day on,
+#   or skipped on one day, changes what that day's run builds; in fund_feed the
+#   provider's file for the day leaves out the share classes `funds` names;
 # - `lab records --day N` reads the rest. `map` and `config` change qedro.yaml from
 #   that day on; `erase` requests an erasure that morning; `sign`, `regenerate` and
 #   `promote` are what people do after the day's records are written, in this order.
@@ -15,6 +16,12 @@
   sign: {record: ropa, as: Max Mustermann, state: for sign-off}
 - day: 3
   sign: {record: ropa, as: Erika Mustermann, state: approved, note: reviewed with the data team}
+
+# The fund feed's provider leaves MF0002's institutional share class out of the day's
+# price file. The check reports that every share class has a price as failed, and
+# MF0002's document says one class has no price for the date.
+- day: 5
+  funds: {missing: [MF0002-I]}
 
 # A new dbt model scores customers by spend. The signed record does not list it, so
 # `qedro status --against` finds the record stale.

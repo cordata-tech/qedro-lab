@@ -35,7 +35,7 @@ jobs:
         # Airflow runs as this runner's uid, so it can write the bind-mounted events/.
         run: |
           echo "AIRFLOW_UID=$(id -u)" > .env
-          mkdir -p events/directory records
+          mkdir -p events/directory events/funds records
           docker compose --profile run --profile scheduler build
           docker compose --profile scheduler up -d --wait
 
@@ -63,6 +63,7 @@ jobs:
           name: lab-events
           path: |
             events/directory/
+            events/funds/
             summary.json
           retention-days: 14
 

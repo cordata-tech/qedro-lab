@@ -1,0 +1,12 @@
+# The fund feed's OpenLineage configuration: one file transport into a directory of
+# its own, /events/funds. Fund prices are not personal data, so the feed's lineage
+# stays out of the directory ACME's Art. 30 record is built from; a real service
+# would write it to a bucket of its own the same way (s3://…, with storage_options).
+#
+# Airflow's own events for the fund_feed DAG still go through openlineage.yml with
+# everything else: its tasks only start the jobs and touch no dataset, so they add
+# parents to ACME's record and no activity.
+transport:
+  type: file
+  log_file_path: /events/funds/ol
+  append: false

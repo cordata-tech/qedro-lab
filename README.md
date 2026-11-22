@@ -141,6 +141,39 @@ signed under (`.frozen.yaml` in each day's directory says which), so its JSON sh
 where its sign-off stands, and `status.json` compares it with that night's lineage.
 Each day's directory holds the `qedro.yaml` it used.
 
+## The fund feed: a pilot rehearsed
+
+A second DAG, `fund_feed`, rehearses a pilot with a team that runs a
+regulatory-reporting product for funds on self-hosted Airflow, custom Python in
+containers, S3 and Postgres, and emits no lineage today. A provider's price file lands
+in S3; custom jobs load it into Postgres, check it, compute an ongoing charges figure
+per share class, and publish one document per fund back to S3. The data is made up
+(`lab/funds.py`), and on day 5 the provider leaves one share class out.
+
+What such a team changes for qedro to read it, all of it in
+`airflow/dags/fund_feed.py`:
+
+- **Airflow** gets the OpenLineage provider, so each job can name the task it ran under.
+- **Each job's command** is prefixed with `art30-emit --job … --reads … --writes … --`,
+  which emits what the job read and wrote around it; the job's code is unchanged.
+- **The check** reports its results with the OpenLineage client, about twenty lines in
+  `lab/jobs/fund_check.py`, on the COMPLETE event once the results are known.
+- **One file transport** writes the events as JSON files (`lab/openlineage-funds.yml`).
+  The lab writes them to `events/funds`; a team would write them to a bucket of its own,
+  and qedro reads the bucket. No Marquez and no other service is needed.
+
+`lab records` then writes `funds-provenance.json` (MF0002's document back to the
+provider's file) and `funds-quality.json` (which checks ran on the prices, and the one
+that failed on day 5), with their PDFs and workbooks. The rehearsal showed what is still
+missing for the record to stand on its own evidence: no step names a commit, because
+`art30-emit` does not emit `sourceCodeLocation`; nothing reports whether a commit was
+signed; and the provenance of a document does not show that a check on its inputs
+failed that day, which is in the assertion history instead.
+
+The feed's lineage is kept apart from ACME's because fund prices are not personal data,
+and qedro cannot leave a job out of an Art. 30 record: in one directory, the jobs would
+appear in ACME's record as processing with no purpose.
+
 ## What it has found so far
 
 Each finding is fixed in the configuration, with its cause written beside the fix.

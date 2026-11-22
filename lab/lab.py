@@ -31,6 +31,9 @@ import yaml
 
 # The environment overrides are for running `records` outside the container.
 EVENTS = Path(os.environ.get("LAB_EVENTS", "/events/directory"))
+#: The fund feed's lineage, written apart from ACME's (openlineage-funds.yml).
+FUND_EVENTS = Path(os.environ.get("LAB_FUND_EVENTS", "/events/funds"))
+FUND_CONFIG = Path(__file__).parent / "funds.yaml"
 RECORDS = Path(os.environ.get("LAB_RECORDS", "/records"))
 CONFIG = Path(__file__).parent / "qedro.yaml"
 REPO = Path("/repo")
@@ -61,12 +64,18 @@ def _filesystems() -> dict[str, fsspec.AbstractFileSystem]:
 
 
 def setup() -> None:
-    """Create the bucket in each emulator, and the directory; harmless when they exist."""
+    """Create the bucket in each emulator, the fund feed's bucket in S3, and the
+    directories; harmless when they exist."""
     EVENTS.mkdir(parents=True, exist_ok=True)
+    FUND_EVENTS.mkdir(parents=True, exist_ok=True)
     for name, fs in _filesystems().items():
         if not fs.exists(BUCKET):
             fs.mkdir(BUCKET)
             print(f"  created {name} bucket {BUCKET}")
+    s3 = _filesystems()["s3"]
+    if not s3.exists("funds"):
+        s3.mkdir("funds")
+        print("  created s3 bucket funds")
 
 
 def _key(event: dict) -> tuple[str, str, str]:
@@ -239,6 +248,10 @@ SCENARIO = Path(__file__).parent / "scenario.yaml"
 #: revenue figure's.
 PROVENANCE = "postgres://warehouse:5432/acme.finance.daily_revenue"
 
+#: The fund document the fund feed's provenance walks back from: MF0002's, whose
+#: institutional share class the provider leaves out on one day of the scenario.
+FUND_DOCUMENT = "s3://funds/reports/kid/MF0002.pdf"
+
 #: Beside each day's records, which of them are frozen and how each was built. Not
 #: `.json`, so a console reading the directory does not take it for a record.
 FROZEN = ".frozen.yaml"
@@ -346,6 +359,12 @@ def records(day: int) -> None:
         "quality.json": ["quality", source, *window],
         "provenance.json": ["provenance", source, *window, "--dataset", PROVENANCE],
     }
+    # The fund feed's records, from its own lineage and configuration: one fund
+    # document's provenance, and which checks ran on the prices and whether they held.
+    if FUND_EVENTS.is_dir() and any(FUND_EVENTS.iterdir()):
+        funds = [str(FUND_EVENTS), "--config", str(FUND_CONFIG), "--until", until]
+        fresh["funds-provenance.json"] = ["provenance", *funds, "--dataset", FUND_DOCUMENT]
+        fresh["funds-quality.json"] = ["quality", *funds]
     # An erasure is written from the morning it was requested on, every day after.
     erasures = [s for s in _steps() if "erase" in s and s["day"] <= day]
     if erasures:

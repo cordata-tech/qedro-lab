@@ -1,0 +1,8 @@
+# qedro.yaml for ACME's fund-data service (lab/funds.py), read for the fund feed's
+# records only: its provenance and its assertion history. The data is fund prices
+# and figures, not personal data, so there are no domains, purposes or legal bases
+# here; the controller is named because every record states who it is about.
+
+controller:
+  name: ACME Finanz GmbH
+  contact: fondsdaten@acme-finanz.example

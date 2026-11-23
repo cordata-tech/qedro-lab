@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.3.0 | a task that emits its own purpose and legal basis, and the fund feed's jobs with the code each ran |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro, with its PDF extra | 0.28.0 | the reader under test, and what `lab records` writes with |
+| qedro, with its PDF extra | 0.29.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the
@@ -167,10 +167,10 @@ provider's file) and `funds-quality.json` (which checks ran on the prices, and t
 that failed on day 5), with their PDFs and workbooks. Each wrapped job reports the code
 it ran, this repository at `LAB_COMMIT` and the path of its script, through
 `art30-emit` 0.3.0's `sourceCodeLocation` facet (art30-emit#3); a team sets the same in
-its job images at build time. What is still missing for the record to stand on its own
-evidence: nothing reports whether a commit was signed, and the provenance of a document
-does not show that a check on its inputs failed that day, which is in the assertion
-history instead (cordata-tech/qedro#64).
+its job images at build time. Since qedro 0.29.0 each step of a document's provenance
+also says what was checked on what it read, so MF0002's document on day 5 names the
+check on the prices that failed (cordata-tech/qedro#64). What is still missing for the
+record to stand on its own evidence: nothing reports whether a commit was signed.
 
 The feed's lineage is kept apart from ACME's because fund prices are not personal data.
 That is not enough: Airflow's own events for the feed's five tasks go wherever Airflow

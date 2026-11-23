@@ -43,5 +43,13 @@ jobs:
     legal_basis: contract
     domain: billing
 
+  # The fund feed's tasks. Their own lineage goes to events/funds, but Airflow's
+  # events for the tasks come here with everything else, and would list them as
+  # activities with no purpose. Fund prices and figures are about no person, so the
+  # rule leaves them out and the record names them with this reason
+  # (cordata-tech/qedro#65).
+  "acme/fund_feed.*":
+    out_of_scope: fund prices and figures, no personal data
+
   "acme/acme_daily.*":
     domain: crm

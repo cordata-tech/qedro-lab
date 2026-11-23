@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.3.0 | a task that emits its own purpose and legal basis, and the fund feed's jobs with the code each ran |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro, with its PDF extra | 0.29.0 | the reader under test, and what `lab records` writes with |
+| qedro, with its PDF extra | 0.30.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the
@@ -128,11 +128,11 @@ read it, so another situation is one more line:
 |---|---|---|---|
 | 3 | 2026-11-04 | Max Mustermann sends the Art. 30 record for sign-off; Erika Mustermann approves it | `ropa.json` approved, by a second person |
 | 6 | 2026-11-07 | a new dbt model, `crm_customer_segments`, scores customers by spend | `status.json`: the signed record is stale, with one new activity |
-| 7 | 2026-11-08 | Max regenerates | `ropa.next.json` beside it, for sign-off, naming the new activity |
+| 7 | 2026-11-08 | Max regenerates | `ropa.next.json` beside it, for sign-off, naming the new activity; `ropa.diff.json` says what changed since the approved version |
 | 8 | 2026-11-09 | a customer's erasure is requested; that day's dbt run leaves `billing_invoices` out | `erasure.json` names `billing_invoices` as not written since |
 | 9 | 2026-11-10 | Erika approves the regenerated version, which replaces the record | `ropa.json` approved again; the erasure has reached everything |
 | 10 | 2026-11-11 | finance reclassifies `daily_revenue` from invoicing to financial reporting | the approved record is stale on that activity's purpose and legal basis |
-| 11 | 2026-11-12 | Erika regenerates | `ropa.next.json` for sign-off, prepared by Erika |
+| 11 | 2026-11-12 | Erika regenerates | `ropa.next.json` for sign-off, prepared by Erika, with `ropa.diff.json` |
 | 12 | 2026-11-13 | four eyes switched off; Erika approves her own version | `ropa.json` approved with no second person |
 
 Once signed, a record is kept as it was signed, as it would be in the repository a DPO
@@ -175,10 +175,12 @@ record to stand on its own evidence: nothing reports whether a commit was signed
 The feed's lineage is kept apart from ACME's because fund prices are not personal data.
 That is not enough: Airflow's own events for the feed's five tasks go wherever Airflow
 sends everything, and with the jobs that name them as parent out of view, ACME's
-Art. 30 record lists them as activities with no purpose, and withholds the mark for it.
-qedro has no way to leave a job out of the record yet (cordata-tech/qedro#65), so
-`expected/summary.json` holds those five activities until it does; a team whose one
-Airflow runs both kinds of pipeline meets the same thing.
+Art. 30 record would list them as activities with no purpose, and withhold the mark for
+it. Since qedro 0.30.0 a rule in `lab/qedro.yaml` says the feed's tasks process no
+personal data (`out_of_scope`, cordata-tech/qedro#65): the record leaves them out and
+names them with that reason, and would withhold the mark again if one of them touched a
+dataset classified as personal data. A team whose one Airflow runs both kinds of
+pipeline writes the same rule.
 
 ## What it has found so far
 

@@ -288,6 +288,31 @@ def _write(*args: str) -> None:
         raise SystemExit(f"qedro {args[0]} exited {result.returncode}")
 
 
+def _compare(target: Path) -> None:
+    """Compare each next version in *target* with the record it would replace.
+
+    Beside them as `<name>.diff.json`, so a reviewer reads what changed before
+    approving (qedro-platform#16). Run in the day's directory, so the comparison
+    names each side by its file name. `qedro diff` exits 5 when it finds changes,
+    which is what it is run for here; anything else that is not 0 is a failure.
+    """
+    for next_version in sorted(target.glob("*.next.json")):
+        before = next_version.name.replace(".next.json", ".json")
+        diff = next_version.name.replace(".next.json", ".diff.json")
+        result = subprocess.run(
+            [
+                os.environ.get("QEDRO", "qedro"),
+                *("diff", before, next_version.name, "--format", "json", "--out", diff),
+            ],
+            cwd=target,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode not in (0, 5):
+            sys.stderr.write(result.stdout + result.stderr)
+            raise SystemExit(f"qedro diff exited {result.returncode}")
+
+
 def _steps() -> list[dict]:
     return yaml.safe_load(SCENARIO.read_text()) or []
 
@@ -440,6 +465,7 @@ def records(day: int) -> None:
             "--out",
             str(target / "status.json"),
         )
+    _compare(target)
     # records/latest names the newest day, relative so it holds outside the container
     # too: a console pointed at it shows a new day on its next reload. Writing an
     # earlier day again leaves it where it is.

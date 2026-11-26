@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.3.0 | a task that emits its own purpose and legal basis, and the fund feed's jobs with the code each ran |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro, with its PDF extra | 0.30.0 | the reader under test, and what `lab records` writes with |
+| qedro, with its PDF extra | 0.31.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the
@@ -139,7 +139,9 @@ Once signed, a record is kept as it was signed, as it would be in the repository
 works in: `lab records` builds it again only from the window and `qedro.yaml` it was
 signed under (`.frozen.yaml` in each day's directory says which), so its JSON shows
 where its sign-off stands, and `status.json` compares it with that night's lineage.
-Each day's directory holds the `qedro.yaml` it used.
+Since qedro 0.31.0 each change `status.json` reports carries its cause, from the
+events before and after the sign-off. Each day's directory holds the `qedro.yaml` it
+used.
 
 ## The fund feed: a pilot rehearsed
 

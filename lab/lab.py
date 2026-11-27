@@ -453,6 +453,8 @@ def records(day: int) -> None:
             _build(target, file, args)
     (target / FROZEN).write_text(yaml.safe_dump(frozen, sort_keys=True))
 
+    # Before the index, so the index lists the comparison it writes.
+    _compare(target)
     # Every day, signed or not: status.json is also the index of the day's
     # documents, which the console reads to find them (qedro 0.32.0,
     # qedro-platform#5). With nothing signed it compares nothing.
@@ -467,7 +469,6 @@ def records(day: int) -> None:
         "--out",
         str(target / "status.json"),
     )
-    _compare(target)
     # records/latest names the newest day, relative so it holds outside the container
     # too: a console pointed at it shows a new day on its next reload. Writing an
     # earlier day again leaves it where it is.

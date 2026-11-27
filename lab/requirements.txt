@@ -1,6 +1,6 @@
 # qedro and what `lab check` reads with, pinned so a check names what ran it.
 # The emitters live in the Airflow image.
-qedro[s3,gcs,azure,pdf]==0.31.0
+qedro[s3,gcs,azure,pdf]==0.32.0
 s3fs==2026.9.0
 gcsfs==2026.10.1
 adlfs==2026.8.0

@@ -24,7 +24,7 @@ onwards in Musterstadt, 00000, and addresses at `.example`, as in `qedro demo`.
 | dbt-core with dbt-postgres, through `dbt-ol` | 1.12.7, 1.11.0, openlineage-dbt 1.55.0 | ACME's CRM and billing models, run from the DAG |
 | art30-emit | 0.3.0 | a task that emits its own purpose and legal basis, and the fund feed's jobs with the code each ran |
 | pipeline-runtime, in a venv of its own | 0.2.12 | a second team's pipelines, emitting the `processing` facet, provenance and classification |
-| qedro, with its PDF extra | 0.31.0 | the reader under test, and what `lab records` writes with |
+| qedro, with its PDF extra | 0.32.0 | the reader under test, and what `lab records` writes with |
 
 Every emitter uses one OpenLineage configuration, `lab/openlineage.yml`, whose
 composite transport sends each event to all six destinations. That is the
@@ -55,8 +55,9 @@ morning of that day, each as JSON, PDF and workbook (the assertion history has n
 yet, cordata-tech/qedro#37). The day's window ends at that day's last event, so an
 earlier day can be written again later and say the same. Sign-off files are carried
 forward from the latest earlier day, as they would stay in the repository a DPO signs
-in, and where one exists, `status.json` says whether the signed record still matches
-the day's lineage. Each day is its own directory, so any day can be opened again, and
+in. Every day has a `status.json`, which lists the day's documents for the console to
+find (qedro 0.32.0) and, once a record is signed, says whether it still matches the
+day's lineage. Each day is its own directory, so any day can be opened again, and
 `records/latest` links to the newest: a console pointed at it shows the next day on
 its next reload.
 
